@@ -1,0 +1,38 @@
+name: Ruby RSpec Test
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '.ruby-version'
+          bundler-cache: true
+
+      - name: Run RuboCop
+        run: |
+          bundle exec rubocop
+
+      - name: Run RSpec
+        run: |
+          bundle exec rspec
+
+      - name: Auto-commit Gemfile.lock
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: "chore: update Gemfile.lock by GitHub Actions"
+          file_pattern: 'Gemfile.lock'
