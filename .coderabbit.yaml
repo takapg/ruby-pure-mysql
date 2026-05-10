@@ -1,7 +1,7 @@
 language: "ja-JP"
 
 reviews:
-  profile: "chill"
+  profile: "assertive"
   high_level_summary: true
   path_filters:
     - "!Gemfile.lock"
