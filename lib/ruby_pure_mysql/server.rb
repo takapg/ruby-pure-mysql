@@ -24,14 +24,13 @@ module RubyPureMysql
 
     def handle_client(client)
       write_handshake_v10(client)
-      
+
       # クライアントからの Login Response を待機 (Sequence ID: 1)
       return unless read_client_response(client)
 
       # ログイン成功を伝える OK Packet を送信 (Sequence ID: 2)
       write_ok_packet(client)
-      
-      # 本来はこの後に SELECT 1; などのコマンドを待つループが必要
+
       puts 'Login successful. implementation ends here for now.'
     end
 
@@ -59,7 +58,7 @@ module RubyPureMysql
 
     def read_client_response(client)
       response_header = client.read(4)
-      return unless response_header
+      return false unless response_header
 
       len = response_header.unpack1('V') & 0xFFFFFF
       client.read(len)
