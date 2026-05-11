@@ -14,7 +14,7 @@ module RubyPureMysql
         client = @server.accept
         handle_client(client)
       rescue StandardError => e
-        puts "Error: #{e.message}" # ここで 'too few arguments' が出ていたはず
+        puts "Error: #{e.message}"
       ensure
         client&.close
       end
@@ -59,15 +59,14 @@ module RubyPureMysql
       # 1. Column Count (1列)
       write_raw_packet(client, [1].pack('C'), seq)
 
-      # 2. Column Definition
-      # [len, 'def', len, '', len, '', len, '1', len, '1', fix_len, charset, col_len, type, flags, decimals]
-      # 引数は 16個、フォーマットも 16個（C a3 C a0 C a0 C a1 C a1 C v V C v C）
+      # 2. Column Definition (フォーマットをシンプルに整理)
       col = [3, 'def', 0, '', 0, '', 1, '1', 1, '1', 12, 33, 11, 3, 0, 0]
-      fmt = 'Ca3 Ca0 Ca0 Ca1 Ca1 C v V C v C'
-      write_raw_packet(client, col.pack(fmt), seq + 1)
+      # 最後の 'v' を削り、数値を正確に当てはめる
+      write_raw_packet(client, col.pack('Ca3Ca0Ca0Ca1Ca1CvVCvCv'), seq + 1)
 
-      # 3. EOF (0xfe), 4. Row Data, 5. EOF (0xfe)
-      eof = [0xfe, 0, 0, 0x02, 0].pack('CCv v')
+      # 3. EOF, 4. Row Data, 5. EOF
+      # EOFパケットを伝統的な 5バイト形式 [0xfe, 0, 0, 0x22, 0] に戻す
+      eof = [0xfe, 0, 0, 0x22, 0].pack('CCv v')
       write_raw_packet(client, eof, seq + 2)
       write_raw_packet(client, [1, '1'].pack('Ca1'), seq + 3)
       write_raw_packet(client, eof, seq + 4)
