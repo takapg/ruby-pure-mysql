@@ -32,11 +32,12 @@ jobs:
           bundle install
 
       - name: Wait for MySQL to be ready
-        run: docker compose exec -T mysql-real mysqladmin --wait=30 ping -h localhost
-
-      - name: Show MySQL logs on failure
-        if: failure()
-        run: docker compose logs mysql-real
+        run: |
+          if ! docker compose exec -T mysql-real mysqladmin --wait=30 ping -h localhost; then
+            echo "::error::MySQL failed to become ready"
+            docker compose logs mysql-real
+            exit 1
+          fi
 
       - name: Run RuboCop
         run: |
