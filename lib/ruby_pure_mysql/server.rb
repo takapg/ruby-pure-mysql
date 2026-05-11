@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'timeout'
 require 'socket'
 
 module RubyPureMysql
@@ -82,7 +83,8 @@ module RubyPureMysql
       return nil unless header
 
       len = header.unpack1('V') & 0xFFFFFF
-      raise ProtocolError, "Invalid length: #{len}" if len <= 0 || len > MAX_PACKET_LEN
+      raise ProtocolError, "Invalid length: #{len}" if len <= 0
+      raise ProtocolError, 'Multi-packet payloads are not supported' if len == MAX_PACKET_LEN
 
       [reader.read_exact(len), header.getbyte(3)]
     end
