@@ -92,6 +92,8 @@ module RubyPureMysql
     end
 
     def handle_command(client, payload, seq)
+      raise ProtocolError.new("empty command packet") if payload.nil? || payload.empty?
+
       command = payload[0].ord
 
       case command
