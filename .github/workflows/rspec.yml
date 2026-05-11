@@ -41,6 +41,9 @@ jobs:
       - name: Run RSpec
         run: |
           bundle exec rspec
+        env:
+          DB_HOST: 127.0.0.1
+          DB_USER: root
 
       - name: Auto-commit Gemfile.lock
         uses: stefanzweifel/git-auto-commit-action@v7
