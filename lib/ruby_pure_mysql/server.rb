@@ -3,6 +3,11 @@
 require 'socket'
 
 module RubyPureMysql
+  # Custom exceptions for MySQL protocol errors
+  class ProtocolError < StandardError; end
+  class AuthenticationError < StandardError; end
+  class InsufficientDataError < ProtocolError; end
+
   # Server クラスは、TCP 接続を受け付け、MySQL プロトコルのパケットを制御します。
   class Server
     def initialize(port)
@@ -13,14 +18,46 @@ module RubyPureMysql
       loop do
         client = @server.accept
         handle_client(client)
+      rescue ProtocolError, AuthenticationError, Timeout::Error, Errno::ECONNRESET, Errno::EPIPE => e
+        puts "Expected error: #{e.class.name}: #{e.message}"
       rescue StandardError => e
-        puts "Error: #{e.message}"
+        # Log full details for unexpected errors and re-raise
+        puts "Unexpected error: #{e.class.name}: #{e.message}"
+        puts "Backtrace:\n#{e.backtrace.join("\n")}"
+        raise
       ensure
         client&.close
       end
     end
 
     private
+
+    def read_exact(client, n)
+      # Read exactly n bytes, handling partial reads
+      buffer = String.new
+      remaining = n
+
+      while remaining > 0
+        chunk = client.read_nonblock(remaining, exception: false)
+
+        case chunk
+        when :wait_readable
+          # Wait for data to be available
+          IO.select([client])
+          next
+        when nil
+          # EOF reached before getting all data
+          raise InsufficientDataError, "Connection closed: expected #{n} bytes, got #{buffer.bytesize}"
+        else
+          buffer << chunk
+          remaining -= chunk.bytesize
+        end
+      end
+
+      buffer
+    rescue EOFError
+      raise InsufficientDataError, "EOF while reading: expected #{n} bytes, got #{buffer.bytesize}"
+    end
 
     def handle_client(client)
       return unless authenticate(client)
@@ -38,21 +75,36 @@ module RubyPureMysql
 
     def command_phase_loop(client)
       loop do
-        header = client.read(4)
-        break unless header
+        begin
+          header = read_exact(client, 4)
+        rescue InsufficientDataError
+          # Connection closed cleanly
+          break
+        end
 
         len = header.unpack1('V') & 0xFFFFFF
         seq = header.unpack('C4')[3]
-        payload = client.read(len)
+        payload = read_exact(client, len)
 
-        handle_command(client, payload, seq)
+        # Break out of loop if handle_command returns false (COM_QUIT)
+        break unless handle_command(client, payload, seq)
       end
     end
 
     def handle_command(client, payload, seq)
-      return unless payload[0].ord == 0x03 # COM_QUERY
+      command = payload[0].ord
 
-      write_select_one_response(client, seq)
+      case command
+      when 0x01 # COM_QUIT
+        # Client requested clean shutdown
+        return false
+      when 0x03 # COM_QUERY
+        write_select_one_response(client, seq)
+        return true
+      else
+        # Unknown command, continue processing
+        return true
+      end
     end
 
     def write_select_one_response(client, seq)
@@ -103,11 +155,14 @@ module RubyPureMysql
     end
 
     def read_packet(client)
-      header = client.read(4)
-      return false unless header
+      begin
+        header = read_exact(client, 4)
+      rescue InsufficientDataError
+        return false
+      end
 
       len = header.unpack1('V') & 0xFFFFFF
-      client.read(len)
+      read_exact(client, len)
       true
     end
   end

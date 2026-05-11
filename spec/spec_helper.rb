@@ -15,7 +15,21 @@ RSpec.configure do |config|
     rescue Errno::EADDRINUSE
       # 既に起動している場合は無視
     end
-    # サーバーが立ち上がるのを少し待つ
-    sleep 0.5
+
+    # サーバーが起動するまで接続をリトライ
+    timeout = 10 # seconds
+    start_time = Time.now
+    connected = false
+
+    until connected || (Time.now - start_time) > timeout
+      begin
+        TCPSocket.new('localhost', 3307).close
+        connected = true
+      rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH
+        sleep 0.1
+      end
+    end
+
+    raise 'Server failed to start within timeout' unless connected
   end
 end
