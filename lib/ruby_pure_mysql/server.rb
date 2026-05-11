@@ -10,6 +10,8 @@ module RubyPureMysql
 
   # Server クラスは、TCP 接続を受け付け、MySQL プロトコルのパケットを制御します。
   class Server
+    MAX_PACKET_LEN = 16_777_215 # 0xFFFFFF - Maximum MySQL packet payload size
+
     def initialize(port)
       @server = TCPServer.new(port)
     end
@@ -24,7 +26,7 @@ module RubyPureMysql
         # Log full details for unexpected errors and re-raise
         puts "Unexpected error: #{e.class.name}: #{e.message}"
         puts "Backtrace:\n#{e.backtrace.join("\n")}"
-        raise
+        raise e
       ensure
         client&.close
       end
@@ -83,6 +85,7 @@ module RubyPureMysql
         end
 
         len = header.unpack1('V') & 0xFFFFFF
+        validate_packet_length(len)
         seq = header.unpack('C4')[3]
         payload = read_exact(client, len)
 
@@ -99,13 +102,14 @@ module RubyPureMysql
       case command
       when 0x01 # COM_QUIT
         # Client requested clean shutdown
-        return false
+        false
       when 0x03 # COM_QUERY
         write_select_one_response(client, seq)
-        return true
+        true
       else
-        # Unknown command, continue processing
-        return true
+        # Unknown command, send error response
+        write_err_packet(client, seq, "Unknown command: 0x#{command.to_s(16).upcase}")
+        true
       end
     end
 
@@ -156,6 +160,18 @@ module RubyPureMysql
       write_raw_packet(client, payload, 2)
     end
 
+    def write_err_packet(client, seq, message)
+      # MySQL ERR packet format: 0xFF header, error code, SQL state marker, SQL state, error message
+      error_code = 1047 # ER_UNKNOWN_COM_ERROR
+      sql_state = '42000' # Syntax error or access violation
+      payload = [0xFF, error_code, '#', sql_state, message].pack('Cv a a5 a*')
+      write_raw_packet(client, payload, seq + 1)
+    end
+
+    def validate_packet_length(len)
+      raise ProtocolError, "Invalid packet length: #{len}" if len <= 0 || len > MAX_PACKET_LEN
+    end
+
     def read_packet(client)
       begin
         header = read_exact(client, 4)
@@ -164,6 +180,7 @@ module RubyPureMysql
       end
 
       len = header.unpack1('V') & 0xFFFFFF
+      validate_packet_length(len)
       read_exact(client, len)
       true
     end
