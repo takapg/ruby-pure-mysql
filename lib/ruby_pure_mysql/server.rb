@@ -59,14 +59,17 @@ module RubyPureMysql
     end
 
     def write_select_one_response(client, seq)
-      # 1. Column Count, 2. Column Definition
+      # 1. Column Count (1列)
       write_raw_packet(client, [1].pack('C'), seq)
-      col_def = ['def', '', '', '1', '1', 63, 11, 3, 0, 0].pack('Ca*Ca*Ca*Ca*Ca*C v V C v')
-      write_raw_packet(client, col_def, seq + 1)
 
-      # 3. EOF (MySQL 8.0), 4. Row Data, 5. EOF
+      # 2. Column Definition (MySQL Protocol の Length-Encoded String 形式)
+      # [len, 'def', len, '', len, '', len, '1', len, '1', charset, len, type, flags, decimals]
+      col = [3, 'def', 0, '', 0, '', 1, '1', 1, '1', 33, 11, 3, 0, 0]
+      write_raw_packet(client, col.pack('Ca3 Ca0 Ca0 Ca1 Ca1 v V C v C'), seq + 1)
+
+      # 3. EOF, 4. Row Data, 5. EOF
       write_raw_packet(client, [0xfe, 0, 0, 0x02, 0].pack('CCv v'), seq + 2)
-      write_raw_packet(client, [1, '1'].pack('Ca*'), seq + 3)
+      write_raw_packet(client, [1, '1'].pack('Ca1'), seq + 3)
       write_raw_packet(client, [0xfe, 0, 0, 0x02, 0].pack('CCv v'), seq + 4)
     end
 
