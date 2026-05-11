@@ -7,7 +7,7 @@ module RubyPureMysql
   class AuthenticationError < StandardError; end
   class InsufficientDataError < ProtocolError; end
 
-  # Server クラス: 接続管理とコマンドのディスパッチ
+  # 接続管理とコマンドのディスパッチをします。
   class Server
     MAX_PACKET_LEN = 0xFF_FF_FF
     READ_TIMEOUT = 5
@@ -126,6 +126,7 @@ module RubyPureMysql
     end
   end
 
+  # ソケットからの低レベルなパケット読み取りを制御します。
   class PacketReader
     def initialize(client, timeout)
       @client = client
