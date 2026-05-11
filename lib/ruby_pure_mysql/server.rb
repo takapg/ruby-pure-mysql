@@ -24,9 +24,15 @@ module RubyPureMysql
 
     def handle_client(client)
       write_handshake_v10(client)
-      puts 'Handshake sent. Waiting for Client Response...'
+      
+      # クライアントからの Login Response を待機 (Sequence ID: 1)
+      return unless read_client_response(client)
 
-      read_client_response(client)
+      # ログイン成功を伝える OK Packet を送信 (Sequence ID: 2)
+      write_ok_packet(client)
+      
+      # 本来はこの後に SELECT 1; などのコマンドを待つループが必要
+      puts 'Login successful. implementation ends here for now.'
     end
 
     def write_handshake_v10(client)
@@ -43,6 +49,14 @@ module RubyPureMysql
       ].pack('Ca*Va8C v C v v C a10 a* a*')
     end
 
+    def write_ok_packet(client)
+      # OK Packet Payload: header(0x00), affected_rows(0), last_insert_id(0) ...
+      payload = [0x00, 0x00, 0x00, 0x02, 0x00].pack('CCVvV')[0, 7]
+      header = [payload.bytesize].pack('V')[0, 3] + [2].pack('C')
+      client.write(header + payload)
+      puts 'OK Packet sent.'
+    end
+
     def read_client_response(client)
       response_header = client.read(4)
       return unless response_header
@@ -50,6 +64,7 @@ module RubyPureMysql
       len = response_header.unpack1('V') & 0xFFFFFF
       client.read(len)
       puts "Received client response (#{len} bytes)."
+      true
     end
   end
 end
