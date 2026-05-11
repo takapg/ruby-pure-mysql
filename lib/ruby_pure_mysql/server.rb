@@ -23,12 +23,20 @@ module RubyPureMysql
     private
 
     def handle_client(client)
+      return unless authenticate(client)
+
+      command_phase_loop(client)
+    end
+
+    def authenticate(client)
       write_handshake_v10(client)
-      return unless read_packet(client) # Login Response
+      return false unless read_packet(client) # Login Response
 
       write_ok_packet(client) # Login OK
-      
-      # クエリ待機ループ
+      true
+    end
+
+    def command_phase_loop(client)
       loop do
         header = client.read(4)
         break unless header
@@ -36,7 +44,7 @@ module RubyPureMysql
         len = header.unpack1('V') & 0xFFFFFF
         seq = header.unpack('C4')[3]
         payload = client.read(len)
-        
+
         handle_command(client, payload, seq)
       end
     end
@@ -51,16 +59,14 @@ module RubyPureMysql
     end
 
     def write_select_one_response(client, seq)
-      # Column Count (1列)
+      # 1. Column Count, 2. Column Definition
       write_raw_packet(client, [1].pack('C'), seq)
-      # Column Definition
-      col_def = ["def", "", "", "1", "1", 63, 11, 3, 0, 0].pack('Ca*Ca*Ca*Ca*Ca*C v V C v')
+      col_def = ['def', '', '', '1', '1', 63, 11, 3, 0, 0].pack('Ca*Ca*Ca*Ca*Ca*C v V C v')
       write_raw_packet(client, col_def, seq + 1)
-      # EOF (MySQL 8.0 では OK パケットの形式)
+
+      # 3. EOF (MySQL 8.0), 4. Row Data, 5. EOF
       write_raw_packet(client, [0xfe, 0, 0, 0x02, 0].pack('CCv v'), seq + 2)
-      # Row Data (文字列として "1" を送る)
-      write_raw_packet(client, [1, "1"].pack('Ca*'), seq + 3)
-      # EOF
+      write_raw_packet(client, [1, '1'].pack('Ca*'), seq + 3)
       write_raw_packet(client, [0xfe, 0, 0, 0x02, 0].pack('CCv v'), seq + 4)
     end
 
