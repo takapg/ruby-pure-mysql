@@ -13,8 +13,8 @@ module RubyPureMysql
     MAX_PACKET_LEN = 0xFF_FF_FF
     READ_TIMEOUT = 5
 
-    def initialize(port)
-      @server = TCPServer.new('127.0.0.1', port)
+    def initialize(port, host: '127.0.0.1')
+      @server = TCPServer.new(host, port)
     end
 
     def run
