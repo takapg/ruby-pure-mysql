@@ -17,6 +17,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Start MySQL
+        run: docker compose up -d
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -27,6 +30,9 @@ jobs:
         run: |
           bundle config set --local frozen false
           bundle install
+
+      - name: Wait for MySQL to be ready
+        run: docker compose exec -T mysql-real mysqladmin --wait=30 ping -h localhost
 
       - name: Run RuboCop
         run: |
