@@ -30,9 +30,9 @@ module RubyPureMysql
 
     def authenticate(client)
       write_handshake_v10(client)
-      return false unless read_packet(client) # Login Response
+      return false unless read_packet(client)
 
-      write_ok_packet(client) # Login OK
+      write_ok_packet(client)
       true
     end
 
@@ -50,11 +50,8 @@ module RubyPureMysql
     end
 
     def handle_command(client, payload, seq)
-      command = payload[0].ord
-      return unless command == 0x03 # COM_QUERY
+      return unless payload[0].ord == 0x03 # COM_QUERY
 
-      query = payload[1..]
-      puts "Received Query: #{query}"
       write_select_one_response(client, seq + 1)
     end
 
@@ -62,25 +59,26 @@ module RubyPureMysql
       # 1. Column Count (1列)
       write_raw_packet(client, [1].pack('C'), seq)
 
-      # 2. Column Definition (MySQL Protocol の Length-Encoded String 形式)
-      # [len, 'def', len, '', len, '', len, '1', len, '1', charset, len, type, flags, decimals]
-      col = [3, 'def', 0, '', 0, '', 1, '1', 1, '1', 33, 11, 3, 0, 0]
-      write_raw_packet(client, col.pack('Ca3 Ca0 Ca0 Ca1 Ca1 v V C v C'), seq + 1)
+      # 2. Column Definition
+      # [3,'def', 0,'', 0,'', 1,'1', 1,'1', 0x0c, 33, 11, 3, 0, 0]
+      # 0x0c (12) は次の固定長フィールドの長さ
+      col = [3, 'def', 0, '', 0, '', 1, '1', 1, '1', 12, 33, 11, 3, 0, 0]
+      write_raw_packet(client, col.pack('Ca3Ca0Ca0Ca1Ca1 C v V C v C v'), seq + 1)
 
-      # 3. EOF, 4. Row Data, 5. EOF
+      # 3. EOF (0xfe), 4. Row Data (len 1, "1"), 5. EOF (0xfe)
       write_raw_packet(client, [0xfe, 0, 0, 0x02, 0].pack('CCv v'), seq + 2)
       write_raw_packet(client, [1, '1'].pack('Ca1'), seq + 3)
       write_raw_packet(client, [0xfe, 0, 0, 0x02, 0].pack('CCv v'), seq + 4)
     end
 
     def write_raw_packet(client, payload, seq)
-      header = [payload.bytesize].pack('V')[0, 3] + [seq].pack('C')
+      header = [payload.bytesize].pack('V')[0, 3] + [seq % 256].pack('C')
       client.write(header + payload)
     end
 
     def write_handshake_v10(client)
       payload = [
-        10, '8.0.0-pure', 1, '12345678', 0, 0x0000, 33, 0x0002, 0x0000,
+        10, "8.0.0-pure\0", 1, '12345678', 0, 0x0000, 33, 0x0002, 0x0000,
         21, "\0" * 10, "123456789012\0", "mysql_native_password\0"
       ].pack('Ca*Va8C v C v v C a10 a* a*')
       write_raw_packet(client, payload, 0)
