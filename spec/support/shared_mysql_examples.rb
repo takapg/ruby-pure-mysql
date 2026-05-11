@@ -11,7 +11,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
   end
 
   after do
-    client.close if client
+    client&.close
   rescue StandardError
     # 接続が既に切れている場合のクローズエラーを無視
   end
