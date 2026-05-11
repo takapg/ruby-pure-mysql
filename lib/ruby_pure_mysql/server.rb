@@ -14,7 +14,7 @@ module RubyPureMysql
         client = @server.accept
         handle_client(client)
       rescue StandardError => e
-        puts "Error: #{e.message}"
+        puts "Error: #{e.message}" # ここで 'too few arguments' が出ていたはず
       ensure
         client&.close
       end
@@ -60,15 +60,17 @@ module RubyPureMysql
       write_raw_packet(client, [1].pack('C'), seq)
 
       # 2. Column Definition
-      # [3,'def', 0,'', 0,'', 1,'1', 1,'1', 0x0c, 33, 11, 3, 0, 0]
-      # 0x0c (12) は次の固定長フィールドの長さ
+      # [len, 'def', len, '', len, '', len, '1', len, '1', fix_len, charset, col_len, type, flags, decimals]
+      # 引数は 16個、フォーマットも 16個（C a3 C a0 C a0 C a1 C a1 C v V C v C）
       col = [3, 'def', 0, '', 0, '', 1, '1', 1, '1', 12, 33, 11, 3, 0, 0]
-      write_raw_packet(client, col.pack('Ca3Ca0Ca0Ca1Ca1 C v V C v C v'), seq + 1)
+      fmt = 'Ca3 Ca0 Ca0 Ca1 Ca1 C v V C v C'
+      write_raw_packet(client, col.pack(fmt), seq + 1)
 
-      # 3. EOF (0xfe), 4. Row Data (len 1, "1"), 5. EOF (0xfe)
-      write_raw_packet(client, [0xfe, 0, 0, 0x02, 0].pack('CCv v'), seq + 2)
+      # 3. EOF (0xfe), 4. Row Data, 5. EOF (0xfe)
+      eof = [0xfe, 0, 0, 0x02, 0].pack('CCv v')
+      write_raw_packet(client, eof, seq + 2)
       write_raw_packet(client, [1, '1'].pack('Ca1'), seq + 3)
-      write_raw_packet(client, [0xfe, 0, 0, 0x02, 0].pack('CCv v'), seq + 4)
+      write_raw_packet(client, eof, seq + 4)
     end
 
     def write_raw_packet(client, payload, seq)
