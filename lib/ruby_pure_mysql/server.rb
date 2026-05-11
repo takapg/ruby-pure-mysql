@@ -11,6 +11,7 @@ module RubyPureMysql
   # Server クラスは、TCP 接続を受け付け、MySQL プロトコルのパケットを制御します。
   class Server
     MAX_PACKET_LEN = 16_777_215 # 0xFFFFFF - Maximum MySQL packet payload size
+    READ_TIMEOUT = 5 # Timeout in seconds for read operations
 
     def initialize(port)
       @server = TCPServer.new(port)
@@ -45,7 +46,8 @@ module RubyPureMysql
         case chunk
         when :wait_readable
           # Wait for data to be available
-          IO.select([client])
+          result = IO.select([client], nil, nil, READ_TIMEOUT)
+          raise Timeout::Error, "Read timeout after #{READ_TIMEOUT} seconds" if result.nil?
           next
         when nil
           # EOF reached before getting all data
@@ -104,7 +106,14 @@ module RubyPureMysql
         # Client requested clean shutdown
         false
       when 0x03 # COM_QUERY
-        write_select_one_response(client, seq)
+        sql = payload[1..]
+        normalized_sql = sql.strip.upcase.chomp(';')
+
+        if normalized_sql == "SELECT 1"
+          write_select_one_response(client, seq)
+        else
+          write_err_packet(client, seq, "Unsupported query: #{sql}")
+        end
         true
       else
         # Unknown command, send error response
