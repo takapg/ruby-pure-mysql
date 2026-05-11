@@ -30,29 +30,17 @@ module RubyPureMysql
     end
 
     def write_handshake_v10(client)
-      # 規格に準拠した最低限のフィールド構成
-      protocol_version = 10
-      server_version = "8.0.0-pure\0"
-      thread_id = 1
-      salt_part1 = "12345678" # 8 bytes
-      filter = 0
-      capability_flags = 0x0000 # Lower 2 bytes
-      char_set = 33 # utf8_general_ci
-      status_flags = 0x0002 # SERVER_STATUS_AUTOCOMMIT
-      capability_flags_upper = 0x0000
-      auth_plugin_data_len = 21 # Salt total length
-      reserved = "\0" * 10
-      salt_part2 = "123456789012\0" # 13 bytes (including null)
-      auth_plugin_name = "mysql_native_password\0"
-
-      payload = [
-        protocol_version, server_version, thread_id, salt_part1, filter,
-        capability_flags, char_set, status_flags, capability_flags_upper,
-        auth_plugin_data_len, reserved, salt_part2, auth_plugin_name
-      ].pack('Ca*Va8C v C v v C a10 a* a*')
-
+      payload = handshake_v10_payload
       header = [payload.bytesize].pack('V')[0, 3] + [0].pack('C')
       client.write(header + payload)
+    end
+
+    def handshake_v10_payload
+      [
+        10, '8.0.0-pure', 1, '12345678', 0,
+        0x0000, 33, 0x0002, 0x0000,
+        21, "\0" * 10, "123456789012\0", "mysql_native_password\0"
+      ].pack('Ca*Va8C v C v v C a10 a* a*')
     end
 
     def read_client_response(client)
