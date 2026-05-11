@@ -24,45 +24,70 @@ module RubyPureMysql
 
     def handle_client(client)
       write_handshake_v10(client)
+      return unless read_packet(client) # Login Response
 
-      # クライアントからの Login Response を待機 (Sequence ID: 1)
-      return unless read_client_response(client)
+      write_ok_packet(client) # Login OK
+      
+      # クエリ待機ループ
+      loop do
+        header = client.read(4)
+        break unless header
 
-      # ログイン成功を伝える OK Packet を送信 (Sequence ID: 2)
-      write_ok_packet(client)
+        len = header.unpack1('V') & 0xFFFFFF
+        seq = header.unpack('C4')[3]
+        payload = client.read(len)
+        
+        handle_command(client, payload, seq)
+      end
+    end
 
-      puts 'Login successful. implementation ends here for now.'
+    def handle_command(client, payload, seq)
+      command = payload[0].ord
+      return unless command == 0x03 # COM_QUERY
+
+      query = payload[1..]
+      puts "Received Query: #{query}"
+      write_select_one_response(client, seq + 1)
+    end
+
+    def write_select_one_response(client, seq)
+      # Column Count (1列)
+      write_raw_packet(client, [1].pack('C'), seq)
+      # Column Definition
+      col_def = ["def", "", "", "1", "1", 63, 11, 3, 0, 0].pack('Ca*Ca*Ca*Ca*Ca*C v V C v')
+      write_raw_packet(client, col_def, seq + 1)
+      # EOF (MySQL 8.0 では OK パケットの形式)
+      write_raw_packet(client, [0xfe, 0, 0, 0x02, 0].pack('CCv v'), seq + 2)
+      # Row Data (文字列として "1" を送る)
+      write_raw_packet(client, [1, "1"].pack('Ca*'), seq + 3)
+      # EOF
+      write_raw_packet(client, [0xfe, 0, 0, 0x02, 0].pack('CCv v'), seq + 4)
+    end
+
+    def write_raw_packet(client, payload, seq)
+      header = [payload.bytesize].pack('V')[0, 3] + [seq].pack('C')
+      client.write(header + payload)
     end
 
     def write_handshake_v10(client)
-      payload = handshake_v10_payload
-      header = [payload.bytesize].pack('V')[0, 3] + [0].pack('C')
-      client.write(header + payload)
-    end
-
-    def handshake_v10_payload
-      [
-        10, '8.0.0-pure', 1, '12345678', 0,
-        0x0000, 33, 0x0002, 0x0000,
+      payload = [
+        10, '8.0.0-pure', 1, '12345678', 0, 0x0000, 33, 0x0002, 0x0000,
         21, "\0" * 10, "123456789012\0", "mysql_native_password\0"
       ].pack('Ca*Va8C v C v v C a10 a* a*')
+      write_raw_packet(client, payload, 0)
     end
 
     def write_ok_packet(client)
-      # OK Packet Payload: header(0x00), affected_rows(0), last_insert_id(0) ...
       payload = [0x00, 0x00, 0x00, 0x02, 0x00].pack('CCVvV')[0, 7]
-      header = [payload.bytesize].pack('V')[0, 3] + [2].pack('C')
-      client.write(header + payload)
-      puts 'OK Packet sent.'
+      write_raw_packet(client, payload, 2)
     end
 
-    def read_client_response(client)
-      response_header = client.read(4)
-      return false unless response_header
+    def read_packet(client)
+      header = client.read(4)
+      return false unless header
 
-      len = response_header.unpack1('V') & 0xFFFFFF
+      len = header.unpack1('V') & 0xFFFFFF
       client.read(len)
-      puts "Received client response (#{len} bytes)."
       true
     end
   end
