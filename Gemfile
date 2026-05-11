@@ -8,4 +8,6 @@ group :development, :test do
   gem 'rspec'
   gem 'rubocop', require: false
   gem 'rubocop-performance', require: false
+
+  gem 'mysql2'
 end
