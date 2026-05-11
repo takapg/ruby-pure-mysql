@@ -1,18 +1,14 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require_relative 'support/shared_mysql_examples'
 
-RSpec.describe 'MySQL Compatibility' do
-  let(:client) do
-    Mysql2::Client.new(
-      host: ENV['DB_HOST'] || '127.0.0.1',
-      username: ENV['DB_USER'] || 'root',
-      port: 3306
-    )
+RSpec.describe 'MySQL Protocol Compatibility' do
+  context 'with Real MySQL (Port 3306)' do
+    it_behaves_like 'a MySQL-compatible server', 3306
   end
 
-  it 'executes SELECT 1;' do
-    results = client.query('SELECT 1;')
-    expect(results.first.values.first).to eq(1)
+  context 'with Ruby-Pure-MySQL (Port 3307)' do
+    it_behaves_like 'a MySQL-compatible server', 3307
   end
 end
