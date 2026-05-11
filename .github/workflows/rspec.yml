@@ -23,6 +23,11 @@ jobs:
           ruby-version: '.ruby-version'
           bundler-cache: false
 
+      - name: Install dependencies and update Lockfile
+        run: |
+          bundle config set --local frozen false
+          bundle install
+
       - name: Run RuboCop
         run: |
           bundle exec rubocop
