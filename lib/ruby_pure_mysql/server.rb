@@ -14,7 +14,7 @@ module RubyPureMysql
     READ_TIMEOUT = 5
 
     def initialize(port)
-      @server = TCPServer.new(port)
+      @server = TCPServer.new('127.0.0.1', port)
     end
 
     def run
@@ -73,7 +73,7 @@ module RubyPureMysql
       if sql.strip.upcase.chomp(';') == 'SELECT 1'
         write_select_one_response(client, seq)
       else
-        write_err_packet(client, seq, "Unsupported query: #{sql}")
+        write_err_packet(client, seq, 'Unsupported query')
       end
       true
     end
