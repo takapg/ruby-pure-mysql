@@ -56,17 +56,18 @@ module RubyPureMysql
     end
 
     def write_select_one_response(client, seq)
-      # 1. Column Count (1列)
+      # 1. Column Count
       write_raw_packet(client, [1].pack('C'), seq)
 
-      # 2. Column Definition (フォーマットをシンプルに整理)
-      col = [3, 'def', 0, '', 0, '', 1, '1', 1, '1', 12, 33, 11, 3, 0, 0]
-      # 最後の 'v' を削り、数値を正確に当てはめる
-      write_raw_packet(client, col.pack('Ca3Ca0Ca0Ca1Ca1CvVCvCv'), seq + 1)
+      # 2. Column Definition (引数とフォーマットを完全に分離して数えやすく)
+      fields = [3, 'def', 0, '', 0, '', 1, '1', 1, '1', 12, 33, 11, 3, 0, 0]
+      # フォーマット: C, a3, C, a0, C, a0, C, a1, C, a1, C, v, V, C, v, C
+      # (16個の引数に対して 16個のディレクティブ)
+      fmt = 'Ca3Ca0Ca0Ca1Ca1CvVCvC'
+      write_raw_packet(client, fields.pack(fmt), seq + 1)
 
       # 3. EOF, 4. Row Data, 5. EOF
-      # EOFパケットを伝統的な 5バイト形式 [0xfe, 0, 0, 0x22, 0] に戻す
-      eof = [0xfe, 0, 0, 0x22, 0].pack('CCv v')
+      eof = [0xfe, 0, 0, 0x02, 0].pack('CCv v')
       write_raw_packet(client, eof, seq + 2)
       write_raw_packet(client, [1, '1'].pack('Ca1'), seq + 3)
       write_raw_packet(client, eof, seq + 4)
