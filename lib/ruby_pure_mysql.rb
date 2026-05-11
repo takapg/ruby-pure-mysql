@@ -2,6 +2,7 @@
 
 require_relative 'ruby_pure_mysql/server'
 
+# RubyPureMysql は、Ruby による純粋な MySQL プロトコルの再実装を提供します。
 module RubyPureMysql
   def self.start(port: 3307)
     puts "Starting MySQL-compatible server on port #{port}..."
