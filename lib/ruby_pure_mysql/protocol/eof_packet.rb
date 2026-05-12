@@ -11,6 +11,7 @@ module RubyPureMysql
       def initialize(status_flags: SERVER_STATUS_AUTOCOMMIT, warnings: 0)
         super()
         unless warnings.is_a?(Integer) &&
+               status_flags.is_a?(Integer) &&
                (0..0xFFFF).cover?(warnings) &&
                (0..0xFFFF).cover?(status_flags)
           raise ArgumentError, 'warnings and status_flags must be in 0..65535'
