@@ -44,10 +44,12 @@ module RubyPureMysql
       handshake = Protocol::HandshakePacket.new(connection_id: 1)
       write_raw_packet(client, handshake.payload, 0)
 
-      return false unless read_next_packet(reader)
+      auth_packet = read_next_packet(reader)
+      return false unless auth_packet
 
+      _auth_payload, auth_seq = auth_packet
       ok = Protocol::OkPacket.new
-      write_raw_packet(client, ok.payload, 2)
+      write_raw_packet(client, ok.payload, auth_seq + 1)
       true
     end
 
