@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'securerandom'
+
 module RubyPureMysql
   module Protocol
     # 接続開始時にサーバーからクライアントへ送られる Initial Handshake パケットです。
