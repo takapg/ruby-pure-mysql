@@ -11,6 +11,9 @@ module RubyPureMysql
       # @param auth_plugin_data [String] 認証に使用する20バイトのランダムデータ（省略時は自動生成）
       def initialize(connection_id: 1, auth_plugin_data: SecureRandom.random_bytes(20))
         super()
+        auth_plugin_data = auth_plugin_data.b
+        raise ArgumentError, 'auth_plugin_data must be exactly 20 bytes' unless auth_plugin_data.bytesize == 20
+
         @connection_id = connection_id
         @auth_plugin_data = auth_plugin_data
       end
@@ -36,7 +39,7 @@ module RubyPureMysql
       end
 
       def auth_part1
-        auth_data_part1 = @auth_plugin_data[0, 8]
+        auth_data_part1 = @auth_plugin_data.byteslice(0, 8)
         [
           pack_string_fixed(auth_data_part1, 8), # Auth-plugin-data-part-1
           [0].pack('C') # Filler (常に0)
@@ -53,7 +56,7 @@ module RubyPureMysql
       end
 
       def auth_part2
-        auth_data_part2 = @auth_plugin_data[8, 12]
+        auth_data_part2 = @auth_plugin_data.byteslice(8, 12)
         [
           [21].pack('C'),                           # Auth-plugin-data-length (21 = 20 bytes + \0)
           pack_string_fixed('', 10),                # Reserved (すべて0)
