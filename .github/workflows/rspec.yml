@@ -17,8 +17,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Start MySQL in background
-        run: docker compose up -d > /dev/null 2>&1 &
+      - name: Start MySQL
+        run: docker compose up -d
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -28,11 +28,7 @@ jobs:
 
       - name: Wait for MySQL to be ready
         run: |
-          if ! docker compose exec -T mysql-real mysqladmin --wait=30 ping -h localhost; then
-            echo "::error::MySQL failed to become ready"
-            docker compose logs mysql-real
-            exit 1
-          fi
+          docker compose exec -T mysql-real mysqladmin --wait=30 ping -h localhost
 
       - name: Run RuboCop
         run: |
