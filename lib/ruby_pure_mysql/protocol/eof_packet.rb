@@ -10,6 +10,10 @@ module RubyPureMysql
       # @param warnings [Integer] 警告の数
       def initialize(status_flags: SERVER_STATUS_AUTOCOMMIT, warnings: 0)
         super()
+        unless (0..0xFFFF).cover?(warnings) && (0..0xFFFF).cover?(status_flags)
+          raise ArgumentError, 'warnings and status_flags must be in 0..65535'
+        end
+
         @status_flags = status_flags
         @warnings = warnings
       end
