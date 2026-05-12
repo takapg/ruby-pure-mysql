@@ -1,4 +1,4 @@
-name: Ruby RSpec Test
+name: CI
 
 on:
   workflow_dispatch:
@@ -8,7 +8,24 @@ on:
     branches: [ "main" ]
 
 jobs:
-  test:
+  rubocop:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '.ruby-version'
+          bundler-cache: true
+
+      - name: Run RuboCop
+        run: |
+          bundle exec rubocop
+
+  rspec:
     runs-on: ubuntu-latest
 
     steps:
@@ -40,10 +57,6 @@ jobs:
             ATTEMPT_NUM=$((ATTEMPT_NUM + 1))
           done
           echo "MySQL is up and running!"
-
-      - name: Run RuboCop
-        run: |
-          bundle exec rubocop
 
       - name: Run RSpec
         run: |
