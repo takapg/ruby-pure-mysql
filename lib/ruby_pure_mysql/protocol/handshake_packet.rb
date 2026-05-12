@@ -33,8 +33,16 @@ module RubyPureMysql
       private
 
       def validate_arguments!(connection_id, auth_plugin_data)
-        raise ArgumentError, 'connection_id must be an Integer between 0 and 4294967295' unless connection_id.is_a?(Integer) && connection_id.between?(0, 0xFFFF_FFFF)
-        raise ArgumentError, 'auth_plugin_data must be a String of exactly 20 bytes' unless auth_plugin_data.is_a?(String)
+        unless connection_id.is_a?(Integer) && connection_id.between?(
+          0, 0xFFFF_FFFF
+        )
+          raise ArgumentError,
+                'connection_id must be an Integer between 0 and 4294967295'
+        end
+        return if auth_plugin_data.is_a?(String)
+
+        raise ArgumentError,
+              'auth_plugin_data must be a String of exactly 20 bytes'
       end
 
       def header_part
