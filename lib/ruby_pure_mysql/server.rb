@@ -96,11 +96,13 @@ module RubyPureMysql
 
     # レスポンス送信系
     def write_select_one_response(client, seq)
+      eof = Protocol::EofPacket.new
+
       write_raw_packet(client, [1].pack('C'), seq + 1)
       write_raw_packet(client, col_def_payload, seq + 2)
-      write_raw_packet(client, [0xfe, 0, 2].pack('Cvv'), seq + 3) # EOF
+      write_raw_packet(client, eof.payload, seq + 3)
       write_raw_packet(client, "\x011", seq + 4) # Row Data ('1')
-      write_raw_packet(client, [0xfe, 0, 2].pack('Cvv'), seq + 5) # EOF
+      write_raw_packet(client, eof.payload, seq + 5)
     end
 
     def col_def_payload
