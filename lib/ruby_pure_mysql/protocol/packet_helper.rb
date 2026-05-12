@@ -8,6 +8,9 @@ module RubyPureMysql
     # 3バイトリトルエンディアン整数をパッキングします。
     # MySQL のパケット長ヘッダなどで多用されます。
     def pack_int3(number)
+      unless number.is_a?(Integer) && number.between?(0, 0xFFFFFF)
+        raise ArgumentError, 'number must be an Integer in 0..0xFFFFFF'
+      end
       [number].pack('V')[0, 3]
     end
 
