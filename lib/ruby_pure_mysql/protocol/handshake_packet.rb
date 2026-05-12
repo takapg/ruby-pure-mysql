@@ -6,8 +6,8 @@ module RubyPureMysql
     # Protocol Revision 10 (MySQL 8.0/5.7等) に準拠します。
     class HandshakePacket < BasePacket
       # @param connection_id [Integer] この接続に割り振られた一意のID
-      # @param auth_plugin_data [String] 認証に使用する20バイトのランダムデータ
-      def initialize(connection_id: 1, auth_plugin_data: '12345678901234567890')
+      # @param auth_plugin_data [String] 認証に使用する20バイトのランダムデータ（省略時は自動生成）
+      def initialize(connection_id: 1, auth_plugin_data: SecureRandom.random_bytes(20))
         super()
         @connection_id = connection_id
         @auth_plugin_data = auth_plugin_data
