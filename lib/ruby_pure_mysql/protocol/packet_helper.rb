@@ -25,9 +25,7 @@ module RubyPureMysql
     # Length-Encoded Integer (LEI) をパッキングします。
     # https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_basic_dt_integers.html#sect_protocol_basic_dt_integers_field_length_encoded_int
     def pack_lenc_int(number)
-      unless number.is_a?(Integer) && number >= 0
-        raise ArgumentError, 'number must be a non-negative Integer'
-      end
+      raise ArgumentError, 'number must be a non-negative Integer' unless number.is_a?(Integer) && number >= 0
 
       if number < 251
         [number].pack('C')
