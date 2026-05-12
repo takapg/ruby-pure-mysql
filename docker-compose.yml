@@ -11,3 +11,5 @@ services:
       interval: 5s
       timeout: 2s
       retries: 10
+    tmpfs:
+      - /var/lib/mysql
