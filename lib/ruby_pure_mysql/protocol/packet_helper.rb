@@ -51,6 +51,7 @@ module RubyPureMysql
     # Length-Encoded String を作成します。
     def pack_lenc_string(str)
       return "\xFB" if str.nil?
+      raise ArgumentError, 'str must be a String or nil' unless str.is_a?(String)
 
       pack_lenc_int(str.bytesize) + str
     end
