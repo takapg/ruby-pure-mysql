@@ -27,7 +27,7 @@ module RubyPureMysql
     CLIENT_SECURE_CONNECTION = 0x8000
     CLIENT_PLUGIN_AUTH       = 0x00080000
 
-    # 8.0系で標準的なフラグのセット (0xA285 相当)
+    # 8.0系で標準的なフラグのセット
     DEFAULT_CAPABILITIES = CLIENT_LONG_PASSWORD |
                            CLIENT_FOUND_ROWS |
                            CLIENT_LONG_FLAG |
