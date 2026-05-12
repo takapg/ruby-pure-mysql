@@ -5,6 +5,7 @@ services:
     command: [
       "mysqld",
       "--ssl=OFF",
+      "--log-error-verbosity=1",
       "--innodb-flush-method=nosync",
       "--innodb-flush-log-at-trx-commit=0",
       "--innodb-doublewrite=0",
