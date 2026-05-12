@@ -10,9 +10,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: write
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -53,9 +50,3 @@ jobs:
         env:
           DB_HOST: 127.0.0.1
           DB_USER: root
-
-      - name: Auto-commit Gemfile.lock
-        uses: stefanzweifel/git-auto-commit-action@v7
-        with:
-          commit_message: "chore: update Gemfile.lock by GitHub Actions"
-          file_pattern: 'Gemfile.lock'
