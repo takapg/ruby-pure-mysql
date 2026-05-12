@@ -33,6 +33,8 @@ jobs:
           until docker compose exec -T mysql-real mysql -h 127.0.0.1 -u root -e "SELECT version();" > /dev/null 2>&1; do
             if [ $ATTEMPT_NUM -ge $MAX_ATTEMPTS ]; then
               echo "Error: MySQL did not start after $MAX_ATTEMPTS attempts."
+              docker compose ps
+              docker compose logs mysql-real --tail=200
               exit 1
             fi
             echo "Waiting for MySQL to start (Attempt: $ATTEMPT_NUM/$MAX_ATTEMPTS)..."
