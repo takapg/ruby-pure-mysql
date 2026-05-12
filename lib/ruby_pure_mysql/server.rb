@@ -136,7 +136,7 @@ module RubyPureMysql
     end
 
     def read_exact(length)
-      buffer = String.new
+      buffer = +''
       while buffer.bytesize < length
         chunk = @client.read_nonblock(length - buffer.bytesize, exception: false)
         case chunk

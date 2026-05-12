@@ -27,4 +27,26 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       expect(results.first.values.first).to eq(1)
     end
   end
+
+  it 'allows new connections after a previous client disconnects' do
+    client1 = Mysql2::Client.new(host: '127.0.0.1', port: port, username: 'root')
+    client2 = nil
+
+    expect(client1.query('SELECT 1;').first.values.first).to eq(1)
+    client1.close
+
+    client2 = Mysql2::Client.new(host: '127.0.0.1', port: port, username: 'root')
+    expect(client2.query('SELECT 1;').first.values.first).to eq(1)
+  ensure
+    begin
+      client1&.close
+    rescue StandardError
+      nil
+    end
+    begin
+      client2&.close
+    rescue StandardError
+      nil
+    end
+  end
 end
