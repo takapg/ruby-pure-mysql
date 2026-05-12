@@ -1,7 +1,8 @@
-require:
+plugins:
   - rubocop-performance
 
-all_configs:
+AllCops:
+  TargetRubyVersion: 3.2
   Exclude:
     - 'vendor/**/*'
     - 'Gemfile'
