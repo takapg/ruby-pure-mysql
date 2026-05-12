@@ -34,6 +34,7 @@ module RubyPureMysql
                            CLIENT_CONNECT_WITH_DB |
                            CLIENT_PROTOCOL_41 |
                            CLIENT_INTERACTIVE |
-                           CLIENT_SECURE_CONNECTION
+                           CLIENT_SECURE_CONNECTION |
+                           CLIENT_PLUGIN_AUTH
   end
 end
