@@ -7,8 +7,8 @@ module RubyPureMysql
 
     # 3バイトリトルエンディアン整数をパッキングします。
     # MySQL のパケット長ヘッダなどで多用されます。
-    def pack_int3(n)
-      [n].pack('V')[0, 3]
+    def pack_int3(number)
+      [number].pack('V')[0, 3]
     end
 
     # 3バイトリトルエンディアン整数をアンパッキングします。
@@ -18,15 +18,15 @@ module RubyPureMysql
 
     # Length-Encoded Integer (LEI) をパッキングします。
     # https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_basic_dt_integers.html#sect_protocol_basic_dt_integers_field_length_encoded_int
-    def pack_lenc_int(n)
-      if n < 251
-        [n].pack('C')
+    def pack_lenc_int(number)
+      if number < 251
+        [number].pack('C')
       elsif n < 0x10000
-        "\xFC#{[n].pack('v')}"
-      elsif n < 0x1000000
-        "\xFD#{pack_int3(n)}"
+        "\xFC#{[number].pack('v')}"
+      elsif number < 0x1000000
+        "\xFD#{pack_int3(number)}"
       else
-        "\xFE#{[n].pack('Q<')}"
+        "\xFE#{[number].pack('Q<')}"
       end
     end
 
