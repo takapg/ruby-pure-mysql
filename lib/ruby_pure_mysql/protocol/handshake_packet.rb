@@ -37,7 +37,7 @@ module RubyPureMysql
         auth_data_part1 = @auth_plugin_data[0, 8]
         [
           pack_string_fixed(auth_data_part1, 8), # Auth-plugin-data-part-1
-          [0].pack('C')                         # Filler (常に0)
+          [0].pack('C') # Filler (常に0)
         ].join
       end
 
