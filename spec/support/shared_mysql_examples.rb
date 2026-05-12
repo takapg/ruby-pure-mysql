@@ -38,7 +38,15 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     client2 = Mysql2::Client.new(host: '127.0.0.1', port: port, username: 'root')
     expect(client2.query('SELECT 1;').first.values.first).to eq(1)
   ensure
-    client1&.close rescue nil
-    client2&.close rescue nil
+    begin
+      client1&.close
+    rescue StandardError
+      nil
+    end
+    begin
+      client2&.close
+    rescue StandardError
+      nil
+    end
   end
 end
