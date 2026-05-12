@@ -43,10 +43,10 @@ module RubyPureMysql
 
       def capability_part
         [
-          pack_int3(DEFAULT_CAPABILITIES & 0xFFFF), # Capability Flags (Lower 2 bytes)
-          [CHARSET_UTF8MB4].pack('C'),              # Character Set
-          [SERVER_STATUS_AUTOCOMMIT].pack('v'),     # Status Flags
-          [DEFAULT_CAPABILITIES >> 16].pack('v')    # Capability Flags (Upper 2 bytes)
+          [DEFAULT_CAPABILITIES & 0xFFFF].pack('v'), # Capability Flags (Lower 2 bytes)
+          [CHARSET_UTF8MB4].pack('C'),               # Character Set
+          [SERVER_STATUS_AUTOCOMMIT].pack('v'),      # Status Flags
+          [DEFAULT_CAPABILITIES >> 16].pack('v')     # Capability Flags (Upper 2 bytes)
         ].join
       end
 
