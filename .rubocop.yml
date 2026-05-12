@@ -1,0 +1,11 @@
+require:
+  - rubocop-performance
+
+all_configs:
+  Exclude:
+    - 'vendor/**/*'
+    - 'Gemfile'
+
+Metrics/BlockLength:
+  Exclude:
+    - 'spec/**/*'
