@@ -2,6 +2,16 @@ services:
   mysql-real:
     image: mysql:8.0-debian
     container_name: mysql-real
+    command: [
+      "mysqld",
+      "--innodb-flush-method=nosync",
+      "--innodb-flush-log-at-trx-commit=0",
+      "--innodb-doublewrite=0",
+      "--skip-host-cache",
+      "--skip-name-resolve",
+      "--innodb-buffer-pool-size=128M",
+      "--innodb-log-buffer-size=64M"
+    ]
     environment:
       MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
     ports:
