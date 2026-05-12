@@ -22,8 +22,15 @@ jobs:
           bundler-cache: true
 
       - name: Run RuboCop
+        id: run-rubocop
         run: |
           bundle exec rubocop
+
+      - name: Show RuboCop Auto-correction Diff
+        if: failure() && steps.run-rubocop.outcome == 'failure'
+        run: |
+          bundle exec rubocop --autocorrect-all || (( $? == 1 ))
+          git diff --color
 
   rspec:
     runs-on: ubuntu-latest
