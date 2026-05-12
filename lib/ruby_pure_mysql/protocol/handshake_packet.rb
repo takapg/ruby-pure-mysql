@@ -11,6 +11,10 @@ module RubyPureMysql
       # @param auth_plugin_data [String] 認証に使用する20バイトのランダムデータ（省略時は自動生成）
       def initialize(connection_id: 1, auth_plugin_data: SecureRandom.random_bytes(20))
         super()
+        unless connection_id.is_a?(Integer) && connection_id.between?(0, 0xFFFF_FFFF)
+          raise ArgumentError, 'connection_id must be an Integer between 0 and 4294967295'
+        end
+        
         auth_plugin_data = auth_plugin_data.b
         raise ArgumentError, 'auth_plugin_data must be exactly 20 bytes' unless auth_plugin_data.bytesize == 20
 
