@@ -8,8 +8,8 @@ module RubyPureMysql
     COM_QUERY = 0x03
 
     # キャラクターセット
-    # 33 は utf8mb4_general_ci を指します。
-    CHARSET_UTF8MB4 = 33
+    # 45 は utf8mb4_general_ci を指します。
+    CHARSET_UTF8MB4 = 45
 
     # サーバーのステータスフラグ (Status Flags)
     # クライアントに現在のトランザクション状態などを伝えます。
