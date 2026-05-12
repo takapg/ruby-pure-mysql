@@ -63,8 +63,8 @@ module RubyPureMysql
       raise ProtocolError, 'empty command packet' if payload.empty?
 
       case payload.getbyte(0)
-      when 0x01 then false # COM_QUIT
-      when 0x03 then handle_query(client, payload[1..], seq)
+      when Protocol::COM_QUIT  then false
+      when Protocol::COM_QUERY then handle_query(client, payload[1..], seq)
       else
         write_err_packet(client, seq, "Unknown command: 0x#{payload.getbyte(0).to_s(16).upcase}")
         true
