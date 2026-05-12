@@ -24,20 +24,24 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '.ruby-version'
-          bundler-cache: false
-
-      - name: Install dependencies and update Lockfile
-        run: |
-          bundle config set --local frozen false
-          bundle install
+          bundler-cache: true
 
       - name: Wait for MySQL to be ready
         run: |
-          if ! docker compose exec -T mysql-real mysqladmin --wait=30 ping -h localhost; then
-            echo "::error::MySQL failed to become ready"
-            docker compose logs mysql-real
-            exit 1
-          fi
+          MAX_ATTEMPTS=30
+          ATTEMPT_NUM=1
+          until docker compose exec -T mysql-real mysql -h 127.0.0.1 -u root -e "SELECT version();" > /dev/null 2>&1; do
+            if [ $ATTEMPT_NUM -ge $MAX_ATTEMPTS ]; then
+              echo "Error: MySQL did not start after $MAX_ATTEMPTS attempts."
+              docker compose ps
+              docker compose logs mysql-real --tail=200
+              exit 1
+            fi
+            echo "Waiting for MySQL to start (Attempt: $ATTEMPT_NUM/$MAX_ATTEMPTS)..."
+            sleep 2
+            ATTEMPT_NUM=$((ATTEMPT_NUM + 1))
+          done
+          echo "MySQL is up and running!"
 
       - name: Run RuboCop
         run: |
