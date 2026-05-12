@@ -15,6 +15,10 @@ module RubyPureMysql
           raise ArgumentError, 'connection_id must be an Integer between 0 and 4294967295'
         end
 
+        unless auth_plugin_data.is_a?(String)
+          raise ArgumentError, 'auth_plugin_data must be a String of exactly 20 bytes'
+        end
+
         auth_plugin_data = auth_plugin_data.b
         raise ArgumentError, 'auth_plugin_data must be exactly 20 bytes' unless auth_plugin_data.bytesize == 20
 
