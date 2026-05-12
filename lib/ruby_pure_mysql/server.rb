@@ -44,9 +44,12 @@ module RubyPureMysql
       handshake = Protocol::HandshakePacket.new(connection_id: 1)
       write_raw_packet(client, handshake.payload, 0)
 
-      return false unless read_next_packet(reader)
+      auth_packet = read_next_packet(reader)
+      return false unless auth_packet
 
-      write_ok_packet(client)
+      _auth_payload, auth_seq = auth_packet
+      ok = Protocol::OkPacket.new
+      write_raw_packet(client, ok.payload, auth_seq + 1)
       true
     end
 
@@ -110,10 +113,6 @@ module RubyPureMysql
     def write_raw_packet(client, payload, seq)
       header = [payload.bytesize].pack('V')[0, 3] + [seq % 256].pack('C')
       client.write(header + payload)
-    end
-
-    def write_ok_packet(client)
-      write_raw_packet(client, [0x00, 0, 0, 2, 0].pack('CCCvv'), 2)
     end
 
     def write_err_packet(client, seq, message)
