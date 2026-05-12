@@ -17,8 +17,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Start MySQL
-        run: docker compose up -d
+      - name: Start MySQL in background
+        run: docker compose up -d > /dev/null 2>&1 &
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
