@@ -21,7 +21,7 @@ jobs:
 
       - name: Run RuboCop Auto-correct
         run: |
-          bundle exec rubocop --autocorrect-all || true 
+          bundle exec rubocop --autocorrect-all || (( $? == 1 ))
 
       - name: Auto-commit changes
         uses: stefanzweifel/git-auto-commit-action@v7
