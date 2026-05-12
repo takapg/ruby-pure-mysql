@@ -26,7 +26,7 @@ jobs:
 
       - name: Wait for MySQL to be ready
         run: |
-          MAX_ATTEMPTS=30
+          MAX_ATTEMPTS=60
           ATTEMPT_NUM=1
           until docker compose exec -T mysql-real mysql -h 127.0.0.1 -u root -e "SELECT version();" > /dev/null 2>&1; do
             if [ $ATTEMPT_NUM -ge $MAX_ATTEMPTS ]; then
@@ -36,7 +36,7 @@ jobs:
               exit 1
             fi
             echo "Waiting for MySQL to start (Attempt: $ATTEMPT_NUM/$MAX_ATTEMPTS)..."
-            sleep 2
+            sleep 1
             ATTEMPT_NUM=$((ATTEMPT_NUM + 1))
           done
           echo "MySQL is up and running!"
