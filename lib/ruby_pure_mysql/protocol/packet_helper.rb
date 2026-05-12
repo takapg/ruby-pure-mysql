@@ -13,7 +13,7 @@ module RubyPureMysql
 
     # 3バイトリトルエンディアン整数をアンパッキングします。
     def unpack_int3(data)
-      (data + "\x00").unpack1('V')
+      "#{data}\u0000".unpack1('V')
     end
 
     # Length-Encoded Integer (LEI) をパッキングします。
@@ -22,11 +22,11 @@ module RubyPureMysql
       if n < 251
         [n].pack('C')
       elsif n < 0x10000
-        "\xFC" + [n].pack('v')
+        "\xFC#{[n].pack('v')}"
       elsif n < 0x1000000
-        "\xFD" + pack_int3(n)
+        "\xFD#{pack_int3(n)}"
       else
-        "\xFE" + [n].pack('Q<')
+        "\xFE#{[n].pack('Q<')}"
       end
     end
 
