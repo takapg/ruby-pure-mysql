@@ -17,6 +17,7 @@ module RubyPureMysql
 
     # 3バイトリトルエンディアン整数をアンパッキングします。
     def unpack_int3(data)
+      raise ArgumentError, 'data must be a String' unless data.is_a?(String)
       raise ArgumentError, 'data must be exactly 3 bytes' unless data.bytesize == 3
 
       "#{data}\u0000".unpack1('V')
@@ -26,6 +27,7 @@ module RubyPureMysql
     # https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_basic_dt_integers.html#sect_protocol_basic_dt_integers_field_length_encoded_int
     def pack_lenc_int(number)
       raise ArgumentError, 'number must be a non-negative Integer' unless number.is_a?(Integer) && number >= 0
+      raise ArgumentError, 'number must be <= 0xFFFFFFFFFFFFFFFF' if number > 0xFFFFFFFFFFFFFFFF
 
       if number < 251
         [number].pack('C')
