@@ -46,7 +46,8 @@ module RubyPureMysql
 
       return false unless read_next_packet(reader)
 
-      write_ok_packet(client)
+      ok = Protocol::OkPacket.new
+      write_raw_packet(client, ok.payload, 2)
       true
     end
 
@@ -110,10 +111,6 @@ module RubyPureMysql
     def write_raw_packet(client, payload, seq)
       header = [payload.bytesize].pack('V')[0, 3] + [seq % 256].pack('C')
       client.write(header + payload)
-    end
-
-    def write_ok_packet(client)
-      write_raw_packet(client, [0x00, 0, 0, 2, 0].pack('CCCvv'), 2)
     end
 
     def write_err_packet(client, seq, message)
