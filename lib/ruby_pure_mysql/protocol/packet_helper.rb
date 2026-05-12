@@ -21,7 +21,7 @@ module RubyPureMysql
     def pack_lenc_int(number)
       if number < 251
         [number].pack('C')
-      elsif n < 0x10000
+      elsif number < 0x10000
         "\xFC#{[number].pack('v')}"
       elsif number < 0x1000000
         "\xFD#{pack_int3(number)}"
