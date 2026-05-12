@@ -11,11 +11,13 @@ module RubyPureMysql
       unless number.is_a?(Integer) && number.between?(0, 0xFFFFFF)
         raise ArgumentError, 'number must be an Integer in 0..0xFFFFFF'
       end
+
       [number].pack('V')[0, 3]
     end
 
     # 3バイトリトルエンディアン整数をアンパッキングします。
     def unpack_int3(data)
+      raise ArgumentError, 'data must be exactly 3 bytes' unless data.bytesize == 3
       "#{data}\u0000".unpack1('V')
     end
 
