@@ -45,18 +45,24 @@ module RubyPureMysql
     # --- バイナリパース（ストリーム読み取り）用メソッド ---
 
     def read_uint8
+      raise ProtocolError, 'Buffer underflow' if @pos + 1 > @payload_buffer.bytesize
+
       val = @payload_buffer.getbyte(@pos)
       @pos += 1
       val
     end
 
     def read_uint16
+      raise ProtocolError, 'Buffer underflow' if @pos + 2 > @payload_buffer.bytesize
+
       val = @payload_buffer.byteslice(@pos, 2).unpack1('v')
       @pos += 2
       val
     end
 
     def read_uint32
+      raise ProtocolError, 'Buffer underflow' if @pos + 4 > @payload_buffer.bytesize
+
       val = @payload_buffer.byteslice(@pos, 4).unpack1('V')
       @pos += 4
       val
