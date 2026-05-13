@@ -21,6 +21,16 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
     expect(results.first.values.first).to eq(1)
   end
 
+  it 'executes SELECT 2; and returns 2' do
+    results = client.query('SELECT 2;')
+    expect(results.first.values.first).to eq(2)
+  end
+
+  it 'executes SELECT 100; and returns 100' do
+    results = client.query('SELECT 100;')
+    expect(results.first.values.first).to eq(100)
+  end
+
   it 'executes SELECT 1; multiple times in the same session' do
     3.times do
       results = client.query('SELECT 1;')
