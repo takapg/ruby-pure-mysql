@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-require 'timeout'
-require 'socket'
-
 module RubyPureMysql
   class ProtocolError < StandardError; end
   class AuthenticationError < StandardError; end
@@ -120,34 +117,6 @@ module RubyPureMysql
     def write_err_packet(client, seq, message)
       payload = [0xFF, 1047, '#', '42000', message].pack('Cv a a5 a*')
       write_raw_packet(client, payload, seq + 1)
-    end
-  end
-
-  # ソケットからの低レベルなパケット読み取りを制御します。
-  class PacketReader
-    def initialize(client, timeout)
-      @client = client
-      @timeout = timeout
-    end
-
-    def read_exact(length)
-      buffer = +''
-      while buffer.bytesize < length
-        chunk = @client.read_nonblock(length - buffer.bytesize, exception: false)
-        case chunk
-        when :wait_readable then wait_socket
-        when nil then raise InsufficientDataError, 'Closed'
-        else buffer << chunk
-        end
-      end
-      buffer
-    end
-
-    private
-
-    def wait_socket
-      result = IO.select([@client], nil, nil, @timeout)
-      raise Timeout::Error, 'Read timeout' if result.nil?
     end
   end
 end
