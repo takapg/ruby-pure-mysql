@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
 module RubyPureMysql
-  class ProtocolError < StandardError; end
-  class AuthenticationError < StandardError; end
-  class InsufficientDataError < ProtocolError; end
-
   # 接続管理とコマンドのディスパッチをします。
   class Server
     MAX_PACKET_LEN = 0xFF_FF_FF
