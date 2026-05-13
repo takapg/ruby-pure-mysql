@@ -19,6 +19,6 @@ require_relative 'ruby_pure_mysql/server'
 module RubyPureMysql
   def self.start(host: '127.0.0.1', port: 3307)
     puts "Starting MySQL-compatible server on #{host}:#{port}..."
-    Server.new(host: host, port: port).run
+    Server.new(host:, port:).run
   end
 end
