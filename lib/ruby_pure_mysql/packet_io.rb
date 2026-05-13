@@ -20,10 +20,10 @@ module RubyPureMysql
       len = header.unpack1('V') & 0xFFFFFF
       seq = header.getbyte(3)
 
-      raise ProtocolError, "Invalid packet length: #{len}" if len <= 0
       raise ProtocolError, 'Multi-packet payloads are not supported' if len == MAX_PACKET_LEN
 
-      [read_exact(len), seq]
+      payload = len.positive? ? read_exact(len) : +''
+      [payload, seq]
     end
 
     def write_packet(payload, seq)
