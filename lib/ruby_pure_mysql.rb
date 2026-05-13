@@ -12,6 +12,7 @@ require_relative 'ruby_pure_mysql/protocol/eof_packet'
 require_relative 'ruby_pure_mysql/protocol/handshake_packet'
 require_relative 'ruby_pure_mysql/protocol/ok_packet'
 
+require_relative 'ruby_pure_mysql/packet_reader'
 require_relative 'ruby_pure_mysql/packet_io'
 require_relative 'ruby_pure_mysql/query_handler'
 require_relative 'ruby_pure_mysql/server'
