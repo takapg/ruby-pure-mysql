@@ -15,10 +15,9 @@ module RubyPureMysql
     end
 
     # パケットを読み取り、PacketReader オブジェクトとシーケンス番号を返します。
-    # @return [Array(PacketReader, Integer), nil]
+    # @return [Array(PacketReader, Integer)]
     def read_packet
       header = read_exact(4)
-      return nil unless header
 
       len = (header.getbyte(0) | header.getbyte(1) << 8 | header.getbyte(2) << 16)
       seq = header.getbyte(3)
