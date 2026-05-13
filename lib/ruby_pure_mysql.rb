@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require_relative 'ruby_pure_mysql/constants'
+require_relative 'ruby_pure_mysql/errors'
+
 require_relative 'ruby_pure_mysql/protocol/packet_helper'
 
 require_relative 'ruby_pure_mysql/protocol/base_packet'
