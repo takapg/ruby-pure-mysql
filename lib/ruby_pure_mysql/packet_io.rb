@@ -88,6 +88,7 @@ module RubyPureMysql
       first = read_uint8
       case first
       when 0..250 then first
+      when 0xFB then nil
       when 0xFC then read_uint16
       when 0xFD then read_uint24_manual
       when 0xFE then read_uint64
@@ -98,12 +99,16 @@ module RubyPureMysql
     private
 
     def read_uint24_manual
+      raise ProtocolError, 'Buffer underflow' if @pos + 3 > @payload_buffer.bytesize
+
       data = @payload_buffer.byteslice(@pos, 3)
       @pos += 3
       (data.getbyte(0) | data.getbyte(1) << 8 | data.getbyte(2) << 16)
     end
 
     def read_uint64
+      raise ProtocolError, 'Buffer underflow' if @pos + 8 > @payload_buffer.bytesize
+
       val = @payload_buffer.byteslice(@pos, 8).unpack1('Q<')
       @pos += 8
       val
