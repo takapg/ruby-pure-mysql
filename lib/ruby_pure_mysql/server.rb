@@ -68,6 +68,7 @@ module RubyPureMysql
     def dispatch_command(io, seq)
       # 先頭1バイトを読み取ってコマンドを判定
       command = io.read_uint8
+      return handle_unknown_command(io, 0, seq) unless command
 
       case command
       when Protocol::COM_QUIT then false
