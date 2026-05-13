@@ -14,7 +14,7 @@ module RubyPureMysql
     # 受信したSQLクエリを解析し、適切なレスポンスを送信します。
     # @param sql [String] 実行するSQL文字列
     def process(sql)
-      normalized_sql = sql.strip.upcase.chomp(';')
+      normalized_sql = sql.upcase.sub(/\s*;\s*\z/, '').strip
 
       case normalized_sql
       when 'SELECT 1'
