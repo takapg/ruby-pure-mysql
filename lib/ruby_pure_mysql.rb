@@ -13,6 +13,7 @@ require_relative 'ruby_pure_mysql/protocol/handshake_packet'
 require_relative 'ruby_pure_mysql/protocol/ok_packet'
 
 require_relative 'ruby_pure_mysql/packet_io'
+require_relative 'ruby_pure_mysql/query_handler'
 require_relative 'ruby_pure_mysql/server'
 
 # RubyPureMysql は、Ruby による純粋な MySQL プロトコルの再実装を提供します。
