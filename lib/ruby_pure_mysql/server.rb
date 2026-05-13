@@ -44,6 +44,8 @@ module RubyPureMysql
       ok_packet = Protocol::OkPacket.new
       io.write_packet(ok_packet.payload, auth_seq + 1)
       true
+    rescue InsufficientDataError
+      false
     end
 
     def command_phase_loop(io)
