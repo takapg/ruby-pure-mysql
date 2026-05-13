@@ -32,6 +32,7 @@ module RubyPureMysql
       command_phase_loop(io)
     rescue StandardError => e
       puts "Unexpected error: #{e.class.name}: #{e.message}\n#{e.backtrace.join("\n")}"
+      raise e
     end
 
     def authenticate(io)
@@ -89,7 +90,7 @@ module RubyPureMysql
       QueryHandler.new(io, seq).process(sql)
     rescue StandardError => e
       puts "Query Error: #{e.class}: #{e.message}"
-      write_err_packet(io, seq, "Internal Server Error: #{e.message}")
+      write_err_packet(io, seq, 'Internal Server Error')
     end
 
     def write_err_packet(io, seq, message)
