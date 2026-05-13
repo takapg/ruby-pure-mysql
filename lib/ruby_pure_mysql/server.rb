@@ -41,8 +41,8 @@ module RubyPureMysql
 
       # クライアントからの HandshakeResponse 受信
       # 本来はここで io.read_uint32 (capability) などを呼び出して認証情報を検証する
-      _payload, seq = io.read_packet
-      return false unless _payload
+      payload, seq = io.read_packet
+      return false unless payload
 
       # 現状は Password-less として常に OK を返す
       ok_packet = Protocol::OkPacket.new
@@ -68,20 +68,20 @@ module RubyPureMysql
     def dispatch_command(io, seq)
       # 先頭1バイトを読み取ってコマンドを判定
       command = io.read_uint8
-      
+
       case command
-      when Protocol::COM_QUIT
-        false
+      when Protocol::COM_QUIT then false
       when Protocol::COM_QUERY
-        # 残りのペイロードすべてを SQL 文として読み取る
-        sql = io.read_string_eof
-        handle_query(io, sql, seq)
+        handle_query(io, io.read_string_eof, seq)
         true
       else
-        # 未知のコマンド
-        write_err_packet(io, seq, "Unknown command: 0x#{command.to_s(16).upcase}")
-        true
+        handle_unknown_command(io, command, seq)
       end
+    end
+
+    def handle_unknown_command(io, command, seq)
+      write_err_packet(io, seq, "Unknown command: 0x#{command.to_s(16).upcase}")
+      true
     end
 
     def handle_query(io, sql, seq)
