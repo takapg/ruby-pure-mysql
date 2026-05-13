@@ -27,7 +27,9 @@ module RubyPureMysql
     end
 
     def write_packet(payload, seq)
-      header = [payload.bytesize].pack('V')[0, 3] + [seq % 256].pack('C')
+      len = payload.bytesize
+      raise ProtocolError, "Payload too large: #{len}" if len > MAX_PACKET_LEN
+      header = [len].pack('V')[0, 3] + [seq % 256].pack('C')
       @client.write(header + payload)
     end
 
