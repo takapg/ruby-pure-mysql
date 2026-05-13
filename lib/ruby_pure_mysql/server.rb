@@ -70,24 +70,12 @@ module RubyPureMysql
     end
 
     def handle_query(io, sql, seq)
-      if sql.strip.upcase.chomp(';') == 'SELECT 1'
-        write_select_one_response(io, seq)
-      else
-        write_err_packet(io, seq, 'Unsupported query')
-      end
+      QueryHandler.new(io, seq).process(sql)
       true
-    end
-
-    # レスポンス送信系
-    def write_select_one_response(io, seq)
-      col_packet = Protocol::ColumnDefinitionPacket.new(name: '1', column_type: Protocol::MYSQL_TYPE_LONG)
-      eof_packet = Protocol::EofPacket.new
-
-      io.write_packet([1].pack('C'), seq + 1)
-      io.write_packet(col_packet.payload, seq + 2)
-      io.write_packet(eof_packet.payload, seq + 3)
-      io.write_packet("\x011", seq + 4) # Row Data ('1')
-      io.write_packet(eof_packet.payload, seq + 5)
+    rescue StandardError => e
+      puts "Unexpected error during query: #{e.class}: #{e.message}"
+      write_err_packet(io, seq, "Internal Server Error: #{e.class}")
+      true
     end
 
     def write_err_packet(io, seq, message)
