@@ -89,20 +89,14 @@ module RubyPureMysql
 
     # レスポンス送信系
     def write_select_one_response(client, seq)
+      col_packet = Protocol::ColumnDefinitionPacket.new(name: '1')
       eof = Protocol::EofPacket.new
 
       write_raw_packet(client, [1].pack('C'), seq + 1)
-      write_raw_packet(client, col_def_payload, seq + 2)
+      write_raw_packet(client, col_packet.payload, seq + 2)
       write_raw_packet(client, eof.payload, seq + 3)
       write_raw_packet(client, "\x011", seq + 4) # Row Data ('1')
       write_raw_packet(client, eof.payload, seq + 5)
-    end
-
-    def col_def_payload
-      [
-        "\x03def\x00\x00\x00\x011\x00\x0c",
-        [33, 11, 8, 0, 0, 0].pack('vVCvCv')
-      ].join
     end
 
     def write_raw_packet(client, payload, seq)
