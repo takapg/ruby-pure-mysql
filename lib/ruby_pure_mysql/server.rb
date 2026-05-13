@@ -26,7 +26,6 @@ module RubyPureMysql
 
     def handle_client(client)
       io = PacketIO.new(client, READ_TIMEOUT)
-
       return unless authenticate(io)
 
       command_phase_loop(io)
@@ -36,16 +35,14 @@ module RubyPureMysql
     end
 
     def authenticate(io)
-      # サーバーからの Handshake 送信
       handshake = Protocol::HandshakePacket.new(connection_id: 1)
       io.write_packet(handshake.payload, 0)
 
-      # クライアントからの HandshakeResponse 受信
-      # 本来はここで io.read_uint32 (capability) などを呼び出して認証情報を検証する
-      payload, seq = io.read_packet
-      return false unless payload
+      # 修正点: payload ではなく reader が返る
+      reader, seq = io.read_packet
+      return false unless reader
 
-      # 現状は Password-less として常に OK を返す
+      # 本来は reader.read_uint32 などで中身を検証する
       ok_packet = Protocol::OkPacket.new
       io.write_packet(ok_packet.payload, seq + 1)
       true
@@ -55,26 +52,23 @@ module RubyPureMysql
 
     def command_phase_loop(io)
       loop do
-        # パケットの読み込み（ここで PacketIO 内部のバッファが更新される）
-        payload, seq = io.read_packet
-        break if payload.nil?
+        reader, seq = io.read_packet # 修正点: payload -> reader
+        break if reader.nil?
 
-        # コマンドのディスパッチを実行。false が返ればループ終了（切断）
-        break unless dispatch_command(io, seq)
+        break unless dispatch_command(io, reader, seq) # 修正点: readerを渡す
       rescue InsufficientDataError
         break
       end
     end
 
-    def dispatch_command(io, seq)
-      # 先頭1バイトを読み取ってコマンドを判定
-      command = io.read_uint8
+    def dispatch_command(io, reader, seq) # 修正点: 引数に reader を追加
+      command = reader.read_uint8 # 修正点: reader から読み取る
       return handle_unknown_command(io, 0, seq) unless command
 
       case command
       when Protocol::COM_QUIT then false
       when Protocol::COM_QUERY
-        handle_query(io, io.read_string_eof, seq)
+        handle_query(io, reader.read_string_eof, seq) # 修正点: reader から読み取る
         true
       else
         handle_unknown_command(io, command, seq)
@@ -94,7 +88,6 @@ module RubyPureMysql
     end
 
     def write_err_packet(io, seq, message)
-      # ERR_Packet の簡易実装: header(0xFF) + error_code(2) + sql_state_marker(#) + sql_state(5) + message
       payload = [0xFF, 1047, '#', '42000', message].pack('Cv a a5 a*')
       io.write_packet(payload, seq + 1)
     end
