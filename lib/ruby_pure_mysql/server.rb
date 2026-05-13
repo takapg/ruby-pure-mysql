@@ -38,7 +38,6 @@ module RubyPureMysql
       handshake = Protocol::HandshakePacket.new(connection_id: 1)
       io.write_packet(handshake.payload, 0)
 
-      # 修正点: payload ではなく reader が返る
       reader, seq = io.read_packet
       return false unless reader
 
@@ -52,23 +51,23 @@ module RubyPureMysql
 
     def command_phase_loop(io)
       loop do
-        reader, seq = io.read_packet # 修正点: payload -> reader
+        reader, seq = io.read_packet
         break if reader.nil?
 
-        break unless dispatch_command(io, reader, seq) # 修正点: readerを渡す
+        break unless dispatch_command(io, reader, seq)
       rescue InsufficientDataError
         break
       end
     end
 
-    def dispatch_command(io, reader, seq) # 修正点: 引数に reader を追加
-      command = reader.read_uint8 # 修正点: reader から読み取る
+    def dispatch_command(io, reader, seq)
+      command = reader.read_uint8
       return handle_unknown_command(io, 0, seq) unless command
 
       case command
       when Protocol::COM_QUIT then false
       when Protocol::COM_QUERY
-        handle_query(io, reader.read_string_eof, seq) # 修正点: reader から読み取る
+        handle_query(io, reader.read_string_eof, seq)
         true
       else
         handle_unknown_command(io, command, seq)
