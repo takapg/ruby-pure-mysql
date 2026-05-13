@@ -51,14 +51,16 @@ module RubyPureMysql
 
     # ノンブロッキングでソケットから読み取り、待機処理をハンドルします。
     def read_from_socket(length)
-      case (chunk = @client.read_nonblock(length, exception: false))
-      when :wait_readable
-        wait_socket
-        read_from_socket(length) # 再試行
-      when nil
-        raise InsufficientDataError, 'Connection closed by peer'
-      else
-        chunk
+      loop do
+        case (chunk = @client.read_nonblock(length, exception: false))
+        when :wait_readable
+          wait_socket
+          # loop なのでこのまま次の回へ（再帰しない）
+        when nil
+          raise InsufficientDataError, 'Connection closed by peer'
+        else
+          return chunk # 読み取れたら loop を抜けて値を返す
+        end
       end
     end
 
