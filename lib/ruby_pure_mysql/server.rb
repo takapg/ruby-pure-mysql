@@ -34,15 +34,15 @@ module RubyPureMysql
     end
 
     def authenticate(client, reader)
-      handshake = Protocol::HandshakePacket.new(connection_id: 1)
-      write_raw_packet(client, handshake.payload, 0)
+      handshake_packet = Protocol::HandshakePacket.new(connection_id: 1)
+      write_raw_packet(client, handshake_packet.payload, 0)
 
       auth_packet = read_next_packet(reader)
       return false unless auth_packet
 
       _auth_payload, auth_seq = auth_packet
-      ok = Protocol::OkPacket.new
-      write_raw_packet(client, ok.payload, auth_seq + 1)
+      ok_packet = Protocol::OkPacket.new
+      write_raw_packet(client, ok_packet.payload, auth_seq + 1)
       true
     end
 
@@ -90,13 +90,13 @@ module RubyPureMysql
     # レスポンス送信系
     def write_select_one_response(client, seq)
       col_packet = Protocol::ColumnDefinitionPacket.new(name: '1', column_type: Protocol::MYSQL_TYPE_LONG)
-      eof = Protocol::EofPacket.new
+      eof_packet = Protocol::EofPacket.new
 
       write_raw_packet(client, [1].pack('C'), seq + 1)
       write_raw_packet(client, col_packet.payload, seq + 2)
-      write_raw_packet(client, eof.payload, seq + 3)
+      write_raw_packet(client, eof_packet.payload, seq + 3)
       write_raw_packet(client, "\x011", seq + 4) # Row Data ('1')
-      write_raw_packet(client, eof.payload, seq + 5)
+      write_raw_packet(client, eof_packet.payload, seq + 5)
     end
 
     def write_raw_packet(client, payload, seq)
