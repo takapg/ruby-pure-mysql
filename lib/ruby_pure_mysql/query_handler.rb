@@ -37,17 +37,17 @@ module RubyPureMysql
 
       # 1. Column Count (カラム数: 1)
       @io.write_packet([1].pack('C'), @seq + 1)
-      
+
       # 2. Column Definition (カラムのメタデータ)
       @io.write_packet(col_packet.payload, @seq + 2)
-      
+
       # 3. EOF (メタデータの終わり)
       @io.write_packet(eof_packet.payload, @seq + 3)
-      
+
       # 4. Row Data (実際のデータ: "1")
       # 文字列としてエンコードされた値（\x01 は長さ1）を送信
       @io.write_packet("\x011", @seq + 4)
-      
+
       # 5. EOF (結果セットの終わり)
       @io.write_packet(eof_packet.payload, @seq + 5)
     end
