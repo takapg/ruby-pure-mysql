@@ -9,6 +9,8 @@ module RubyPureMysql
       # @param name [String] カラム名
       def initialize(name:, column_type: 0xFD, character_set: CHARSET_UTF8MB4, column_length: 255)
         super()
+        raise ArgumentError, 'name cannot be nil or empty' if name.nil? || name.empty?
+
         @name = name
         @column_type = column_type
         @character_set = character_set
