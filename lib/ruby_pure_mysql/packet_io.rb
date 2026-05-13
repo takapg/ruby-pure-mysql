@@ -109,9 +109,11 @@ module RubyPureMysql
         remaining = length - buffer.bytesize
         chunk = read_from_socket(remaining)
         break unless chunk
+
         buffer << chunk
       end
       raise InsufficientDataError, 'Connection closed' if buffer.bytesize < length
+
       buffer
     end
 
