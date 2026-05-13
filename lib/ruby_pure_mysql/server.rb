@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
+require 'socket'
+
 module RubyPureMysql
-  # 接続管理とコマンドのディスパッチをします。
+  # 接続管理とコマンドのディスパッチを担当します。
   class Server
-    MAX_PACKET_LEN = 0xFF_FF_FF
     READ_TIMEOUT = 5
 
     def initialize(host: '127.0.0.1', port: 3307)
@@ -15,7 +16,7 @@ module RubyPureMysql
         client = @server.accept
         handle_client(client)
       rescue ProtocolError, AuthenticationError, Timeout::Error, Errno::ECONNRESET, Errno::EPIPE => e
-        puts "Expected error: #{e.class.name}: #{e.message}"
+        puts "Expected connection error: #{e.class.name}: #{e.message}"
       ensure
         client&.close
       end
@@ -25,24 +26,27 @@ module RubyPureMysql
 
     def handle_client(client)
       io = PacketIO.new(client, READ_TIMEOUT)
+
       return unless authenticate(io)
 
       command_phase_loop(io)
     rescue StandardError => e
       puts "Unexpected error: #{e.class.name}: #{e.message}\n#{e.backtrace.join("\n")}"
-      raise e
     end
 
     def authenticate(io)
-      handshake_packet = Protocol::HandshakePacket.new(connection_id: 1)
-      io.write_packet(handshake_packet.payload, 0)
+      # サーバーからの Handshake 送信
+      handshake = Protocol::HandshakePacket.new(connection_id: 1)
+      io.write_packet(handshake.payload, 0)
 
-      auth_packet = io.read_packet
-      return false unless auth_packet
+      # クライアントからの HandshakeResponse 受信
+      # 本来はここで io.read_uint32 (capability) などを呼び出して認証情報を検証する
+      _payload, seq = io.read_packet
+      return false unless _payload
 
-      _auth_payload, auth_seq = auth_packet
+      # 現状は Password-less として常に OK を返す
       ok_packet = Protocol::OkPacket.new
-      io.write_packet(ok_packet.payload, auth_seq + 1)
+      io.write_packet(ok_packet.payload, seq + 1)
       true
     rescue InsufficientDataError
       false
@@ -50,35 +54,45 @@ module RubyPureMysql
 
     def command_phase_loop(io)
       loop do
-        payload, seq = io.read_packet
-        break if payload.nil? || !dispatch_command(io, payload, seq)
+        # パケットの読み込み（ここで PacketIO 内部のバッファが更新される）
+        _payload, seq = io.read_packet
+        break if _payload.nil?
+
+        # コマンドのディスパッチを実行。false が返ればループ終了（切断）
+        break unless dispatch_command(io, seq)
       rescue InsufficientDataError
         break
       end
     end
 
-    def dispatch_command(io, payload, seq)
-      raise ProtocolError, 'empty command packet' if payload.empty?
-
-      case payload.getbyte(0)
-      when Protocol::COM_QUIT  then false
-      when Protocol::COM_QUERY then handle_query(io, payload[1..], seq)
+    def dispatch_command(io, seq)
+      # 先頭1バイトを読み取ってコマンドを判定
+      command = io.read_uint8
+      
+      case command
+      when Protocol::COM_QUIT
+        false
+      when Protocol::COM_QUERY
+        # 残りのペイロードすべてを SQL 文として読み取る
+        sql = io.read_string_eof
+        handle_query(io, sql, seq)
+        true
       else
-        write_err_packet(io, seq, "Unknown command: 0x#{payload.getbyte(0).to_s(16).upcase}")
+        # 未知のコマンド
+        write_err_packet(io, seq, "Unknown command: 0x#{command.to_s(16).upcase}")
         true
       end
     end
 
     def handle_query(io, sql, seq)
       QueryHandler.new(io, seq).process(sql)
-      true
     rescue StandardError => e
-      puts "Unexpected error during query: #{e.class}: #{e.message}"
-      write_err_packet(io, seq, "Internal Server Error: #{e.class}")
-      true
+      puts "Query Error: #{e.class}: #{e.message}"
+      write_err_packet(io, seq, "Internal Server Error: #{e.message}")
     end
 
     def write_err_packet(io, seq, message)
+      # ERR_Packet の簡易実装: header(0xFF) + error_code(2) + sql_state_marker(#) + sql_state(5) + message
       payload = [0xFF, 1047, '#', '42000', message].pack('Cv a a5 a*')
       io.write_packet(payload, seq + 1)
     end
