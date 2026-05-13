@@ -11,7 +11,7 @@ RSpec.configure do |config|
   # テスト開始前に 3307 ポートで自作サーバーを起動
   config.before(:suite) do
     Thread.new do
-      RubyPureMysql.start(port: 3307)
+      RubyPureMysql.start(host: '127.0.0.1', port: 3307)
     rescue Errno::EADDRINUSE
       # 既に起動している場合は無視
     end
