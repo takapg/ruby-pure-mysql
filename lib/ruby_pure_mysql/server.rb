@@ -89,7 +89,7 @@ module RubyPureMysql
 
     # レスポンス送信系
     def write_select_one_response(client, seq)
-      col_packet = Protocol::ColumnDefinitionPacket.new(name: '1', column_type: 0x03)
+      col_packet = Protocol::ColumnDefinitionPacket.new(name: '1', column_type: Protocol::MYSQL_TYPE_LONG)
       eof = Protocol::EofPacket.new
 
       write_raw_packet(client, [1].pack('C'), seq + 1)
