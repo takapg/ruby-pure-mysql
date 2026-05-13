@@ -5,6 +5,7 @@ require 'timeout'
 
 module RubyPureMysql
   # MySQL プロトコルのパケット単位での読み書き（フレーミング）を制御します。
+  # 実際のペイロード解析は PacketReader に委ねます。
   class PacketIO
     MAX_PACKET_LEN = 0xFF_FF_FF
 
@@ -13,30 +14,32 @@ module RubyPureMysql
       @timeout = timeout
     end
 
+    # パケットを読み取り、PacketReader オブジェクトとシーケンス番号を返します。
+    # @return [Array(PacketReader, Integer)]
     def read_packet
       header = read_exact(4)
-      return nil unless header
 
-      len = header.unpack1('V') & 0xFFFFFF
+      len = (header.getbyte(0) | header.getbyte(1) << 8 | header.getbyte(2) << 16)
       seq = header.getbyte(3)
 
       raise ProtocolError, 'Multi-packet payloads are not supported' if len == MAX_PACKET_LEN
 
       payload = len.positive? ? read_exact(len) : +''
-      [payload, seq]
+      [PacketReader.new(payload), seq]
     end
 
+    # ペイロードをパケットとして送信します。
     def write_packet(payload, seq)
       len = payload.bytesize
       raise ProtocolError, "Payload too large: #{len}" if len > MAX_PACKET_LEN
 
-      header = [len].pack('V')[0, 3] + [seq % 256].pack('C')
+      # 3byte len + 1byte seq
+      header = [len & 0xFF, (len >> 8) & 0xFF, (len >> 16) & 0xFF, seq % 256].pack('C4')
       @client.write(header + payload)
     end
 
     private
 
-    # 指定されたバイト数に達するまで読み取ります。
     def read_exact(length)
       buffer = +''
       while buffer.bytesize < length
@@ -46,20 +49,17 @@ module RubyPureMysql
 
         buffer << chunk
       end
-      buffer.bytesize == length ? buffer : nil
+      raise InsufficientDataError, 'Connection closed' if buffer.bytesize < length
+
+      buffer
     end
 
-    # ノンブロッキングでソケットから読み取り、待機処理をハンドルします。
     def read_from_socket(length)
       loop do
         case (chunk = @client.read_nonblock(length, exception: false))
-        when :wait_readable
-          wait_socket
-          # loop なのでこのまま次の回へ（再帰しない）
-        when nil
-          raise InsufficientDataError, 'Connection closed by peer'
-        else
-          return chunk # 読み取れたら loop を抜けて値を返す
+        when :wait_readable then wait_socket
+        when nil then return nil
+        else return chunk
         end
       end
     end

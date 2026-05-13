@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
+require 'socket'
+
 module RubyPureMysql
-  # 接続管理とコマンドのディスパッチをします。
+  # 接続管理とコマンドのディスパッチを担当します。
   class Server
-    MAX_PACKET_LEN = 0xFF_FF_FF
     READ_TIMEOUT = 5
 
     def initialize(host: '127.0.0.1', port: 3307)
@@ -15,7 +16,7 @@ module RubyPureMysql
         client = @server.accept
         handle_client(client)
       rescue ProtocolError, AuthenticationError, Timeout::Error, Errno::ECONNRESET, Errno::EPIPE => e
-        puts "Expected error: #{e.class.name}: #{e.message}"
+        puts "Expected connection error: #{e.class.name}: #{e.message}"
       ensure
         client&.close
       end
@@ -34,15 +35,15 @@ module RubyPureMysql
     end
 
     def authenticate(io)
-      handshake_packet = Protocol::HandshakePacket.new(connection_id: 1)
-      io.write_packet(handshake_packet.payload, 0)
+      handshake = Protocol::HandshakePacket.new(connection_id: 1)
+      io.write_packet(handshake.payload, 0)
 
-      auth_packet = io.read_packet
-      return false unless auth_packet
+      reader, seq = io.read_packet
+      return false unless reader
 
-      _auth_payload, auth_seq = auth_packet
+      # 本来は reader.read_uint32 などで中身を検証する
       ok_packet = Protocol::OkPacket.new
-      io.write_packet(ok_packet.payload, auth_seq + 1)
+      io.write_packet(ok_packet.payload, seq + 1)
       true
     rescue InsufficientDataError
       false
@@ -50,32 +51,39 @@ module RubyPureMysql
 
     def command_phase_loop(io)
       loop do
-        payload, seq = io.read_packet
-        break if payload.nil? || !dispatch_command(io, payload, seq)
+        reader, seq = io.read_packet
+        break if reader.nil?
+
+        break unless dispatch_command(io, reader, seq)
       rescue InsufficientDataError
         break
       end
     end
 
-    def dispatch_command(io, payload, seq)
-      raise ProtocolError, 'empty command packet' if payload.empty?
+    def dispatch_command(io, reader, seq)
+      command = reader.read_uint8
+      return handle_unknown_command(io, 0, seq) unless command
 
-      case payload.getbyte(0)
-      when Protocol::COM_QUIT  then false
-      when Protocol::COM_QUERY then handle_query(io, payload[1..], seq)
-      else
-        write_err_packet(io, seq, "Unknown command: 0x#{payload.getbyte(0).to_s(16).upcase}")
+      case command
+      when Protocol::COM_QUIT then false
+      when Protocol::COM_QUERY
+        handle_query(io, reader.read_string_eof, seq)
         true
+      else
+        handle_unknown_command(io, command, seq)
       end
+    end
+
+    def handle_unknown_command(io, command, seq)
+      write_err_packet(io, seq, "Unknown command: 0x#{command.to_s(16).upcase}")
+      true
     end
 
     def handle_query(io, sql, seq)
       QueryHandler.new(io, seq).process(sql)
-      true
     rescue StandardError => e
-      puts "Unexpected error during query: #{e.class}: #{e.message}"
-      write_err_packet(io, seq, "Internal Server Error: #{e.class}")
-      true
+      puts "Query Error: #{e.class}: #{e.message}"
+      write_err_packet(io, seq, 'Internal Server Error')
     end
 
     def write_err_packet(io, seq, message)
