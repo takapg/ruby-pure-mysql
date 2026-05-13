@@ -7,6 +7,9 @@ module RubyPureMysql
     COM_QUIT  = 0x01
     COM_QUERY = 0x03
 
+    # カラム型 (Field Types)
+    MYSQL_TYPE_LONG = 0x03
+
     # キャラクターセット
     # 45 は utf8mb4_general_ci を指します。
     CHARSET_UTF8MB4 = 45
