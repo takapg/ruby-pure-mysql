@@ -55,8 +55,8 @@ module RubyPureMysql
     def command_phase_loop(io)
       loop do
         # パケットの読み込み（ここで PacketIO 内部のバッファが更新される）
-        _payload, seq = io.read_packet
-        break if _payload.nil?
+        payload, seq = io.read_packet
+        break if payload.nil?
 
         # コマンドのディスパッチを実行。false が返ればループ終了（切断）
         break unless dispatch_command(io, seq)
