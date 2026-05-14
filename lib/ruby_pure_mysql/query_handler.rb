@@ -1,22 +1,14 @@
 # frozen_string_literal: true
 
-require 'English'
-
 module RubyPureMysql
   # SQLクエリの解釈と、それに対するレスポンスパケットの生成を担当します。
   class QueryHandler
-    # 抽出用正規表現
-    # expr: カラム名として使用する全体式
-    # num: 数値リテラル
-    # str: クォート内の文字列
+    # 抽出用正規表現。名前付きキャプチャを使用して可読性を維持。
     SELECT_PATTERN = /\ASELECT\s+(?<expr>(?:(?<num>\d+)|'(?<str>[^']*)'|"(?<str>[^"]*)"))\z/i
 
     # 数値範囲の定義
-    INT32_MAX = 2_147_483_647
-    INT32_MIN = -2_147_483_648
+    INT32_RANGE = (-2_147_483_648..2_147_483_647)
 
-    # @param io [PacketIO] パケットの送受信を行うオブジェクト
-    # @param seq [Integer] クライアントから受け取った最後のシーケンス番号
     def initialize(io, seq)
       @io = io
       @seq = seq
@@ -24,20 +16,11 @@ module RubyPureMysql
 
     # 受信したSQLクエリを解析し、適切なレスポンスを送信します。
     def process(sql)
-      normalized_sql = sql.sub(/\s*;\s*\z/, '').strip
+      # 修正: gsub と strip で末尾の全セミコロンと空白を確実に除去
+      normalized = sql.gsub(/[;\s]+\z/, '').strip
 
-      if (match = normalized_sql.match(SELECT_PATTERN))
-        # CodeRabbit指摘: SELECT "" 等の時に列名が "?" にならないよう、マッチした式をそのまま使う
-        column_name = match[:expr]
-
-        if match[:num]
-          # CodeRabbit指摘: 数値の大きさに応じて LONG(32bit) か LONGLONG(64bit) を選択
-          val_i = match[:num].to_i
-          type = val_i > INT32_MAX || val_i < INT32_MIN ? Protocol::MYSQL_TYPE_LONGLONG : Protocol::MYSQL_TYPE_LONG
-          handle_select(match[:num], type, column_name)
-        else
-          handle_select(match[:str], Protocol::MYSQL_TYPE_VAR_STRING, column_name)
-        end
+      if (match = normalized.match(SELECT_PATTERN))
+        handle_matched_query(match)
       else
         write_err_packet("Unsupported or invalid query: #{sql[0..32]}...", '42000', 1064)
       end
@@ -45,7 +28,18 @@ module RubyPureMysql
 
     private
 
-    # SELECT クエリの結果を送信します。
+    # process メソッドを分割して Metrics/MethodLength を回避
+    def handle_matched_query(match)
+      if match[:num]
+        val_i = match[:num].to_i
+        type = INT32_RANGE.cover?(val_i) ? Protocol::MYSQL_TYPE_LONG : Protocol::MYSQL_TYPE_LONGLONG
+        handle_select(match[:num], type, match[:expr])
+      else
+        handle_select(match[:str], Protocol::MYSQL_TYPE_VAR_STRING, match[:expr])
+      end
+    end
+
+    # SELECT クエリの結果を送信
     def handle_select(value, type, column_name)
       write_column_count(1)
       write_column_definition(column_name, type)
@@ -60,15 +54,13 @@ module RubyPureMysql
 
     def write_column_definition(name, type)
       col_packet = Protocol::ColumnDefinitionPacket.new(
-        name: name.to_s,
-        column_type: type
+        name: name.to_s, column_type: type
       )
       @io.write_packet(col_packet.payload, @seq + 2)
     end
 
     def write_row_data(value)
-      row_payload = PacketHelper.pack_lenc_string(value.to_s)
-      @io.write_packet(row_payload, @seq + 4)
+      @io.write_packet(PacketHelper.pack_lenc_string(value.to_s), @seq + 4)
     end
 
     def write_eof_packet(sequence_offset:)
