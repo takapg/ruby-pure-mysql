@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'English'
 module RubyPureMysql
   # SQLクエリの解釈と、それに対するレスポンスパケットの生成を担当します。
   class QueryHandler
@@ -22,7 +23,7 @@ module RubyPureMysql
       case normalized_sql
       when SELECT_PATTERN
         # 特殊変数 $~ (MatchData) から名前付きキャプチャを取得
-        handle_select($~[:val])
+        handle_select($LAST_MATCH_INFO[:val])
       else
         write_err_packet("Unsupported query: #{sql[0..32]}...", '42000', 1047)
       end
@@ -38,7 +39,7 @@ module RubyPureMysql
       # 3. EOF Packet
       # 4. Row Data (実際のデータ)
       # 5. EOF Packet (結果セットの終了)
-      
+
       write_column_count(1)
       write_column_definition(value)
       write_eof_packet(sequence_offset: 3) # カラム定義後のEOF
