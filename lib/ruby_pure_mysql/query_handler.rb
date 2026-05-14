@@ -41,7 +41,7 @@ module RubyPureMysql
     # @param value [String] 送信する値
     # @param type [Integer] MySQLのフィールド型
     def handle_select(value, type)
-      display_name = (value.nil? || value.empty?) ? '?' : value
+      display_name = value.nil? || value.empty? ? '?' : value
 
       write_column_count(1)
       write_column_definition(display_name, type)
