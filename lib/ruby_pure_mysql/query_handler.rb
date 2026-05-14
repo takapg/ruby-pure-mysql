@@ -33,7 +33,7 @@ module RubyPureMysql
         if match[:num]
           # CodeRabbit指摘: 数値の大きさに応じて LONG(32bit) か LONGLONG(64bit) を選択
           val_i = match[:num].to_i
-          type = (val_i > INT32_MAX || val_i < INT32_MIN) ? Protocol::MYSQL_TYPE_LONGLONG : Protocol::MYSQL_TYPE_LONG
+          type = val_i > INT32_MAX || val_i < INT32_MIN ? Protocol::MYSQL_TYPE_LONGLONG : Protocol::MYSQL_TYPE_LONG
           handle_select(match[:num], type, column_name)
         else
           handle_select(match[:str], Protocol::MYSQL_TYPE_VAR_STRING, column_name)
