@@ -7,10 +7,6 @@ module RubyPureMysql
   class QueryHandler
     SELECT_PATTERN = /\ASELECT\s+(?:(?<num>\d+)|'(?<str>[^']*)'|"(?<str>[^"]*)")\z/i
 
-    # MySQL プロトコル上の型定義（もし constants.rb になければこちらを使用）
-    MYSQL_TYPE_LONG = 0x03
-    MYSQL_TYPE_VAR_STRING = 0xfd
-
     # @param io [PacketIO] パケットの送受信を行うオブジェクト
     # @param seq [Integer] クライアントから受け取った最後のシーケンス番号
     def initialize(io, seq)
@@ -25,10 +21,10 @@ module RubyPureMysql
       if (match = normalized_sql.match(SELECT_PATTERN))
         if match[:num]
           # 数値としてマッチした場合
-          handle_select(match[:num], MYSQL_TYPE_LONG)
+          handle_select(match[:num], Protocol::MYSQL_TYPE_LONG)
         else
           # 文字列（クォートあり）としてマッチした場合
-          handle_select(match[:str], MYSQL_TYPE_VAR_STRING)
+          handle_select(match[:str], Protocol::MYSQL_TYPE_VAR_STRING)
         end
       else
         write_err_packet("Unsupported or invalid query: #{sql[0..32]}...", '42000', 1064)
