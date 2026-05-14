@@ -33,7 +33,7 @@ module RubyPureMysql
     def handle_matched_query(match)
       if match[:num]
         val_i = match[:num].to_i
-        return unless valid_integer_range?(val_i)
+        return unless valid_integer_range?(val_i, match[:num])
 
         type = INT32_RANGE.cover?(val_i) ? Protocol::MYSQL_TYPE_LONG : Protocol::MYSQL_TYPE_LONGLONG
         handle_select(val_i, type, match[:expr])
@@ -42,10 +42,10 @@ module RubyPureMysql
       end
     end
 
-    def valid_integer_range?(val_i)
+    def valid_integer_range?(val_i, raw_value)
       return true if INT64_RANGE.cover?(val_i)
 
-      write_err_packet("Unsupported or invalid query: #{val_i}...", '42000', 1064)
+      write_err_packet("Unsupported or invalid query: #{raw_value[0..32]}...", '42000', 1064)
       false
     end
 
