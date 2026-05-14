@@ -31,7 +31,7 @@ module RubyPureMysql
 
     # SELECT クエリの結果（単一値）を送信します。
     def handle_select(value)
-      display_name = (value.nil? || value.empty?) ? '?' : value
+      display_name = value.nil? || value.empty? ? '?' : value
 
       write_column_count(1)
       write_column_definition(display_name)
