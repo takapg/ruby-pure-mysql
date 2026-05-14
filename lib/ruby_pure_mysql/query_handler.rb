@@ -16,7 +16,7 @@ module RubyPureMysql
 
     # 受信したSQLクエリを解析し、適切なレスポンスを送信します。
     def process(sql)
-      normalized_sql = sql.sub(/\s*;\s*\z/, '').strip
+      normalized_sql = sql.gsub(/(?:\s*;\s*)+\z/, '').strip
 
       if (match = normalized_sql.match(SELECT_PATTERN))
         if match[:num]
