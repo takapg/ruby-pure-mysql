@@ -90,7 +90,7 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
 
     it 'handles trailing spaces and multiple semicolons' do
       # 最後のセミコロン除去ロジックのテスト
-      results = client.query("SELECT 'space_test'  ;  ")
+      results = client.query("SELECT 'space_test'  ;;;  ")
       expect(results.first.values.first).to eq('space_test')
     end
   end
