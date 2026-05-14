@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
 require 'English'
+
 module RubyPureMysql
   # SQLクエリの解釈と、それに対するレスポンスパケットの生成を担当します。
   class QueryHandler
     # MySQLの構文を模倣する正規表現
-    # 数値、シングルクォート文字列、ダブルクォート文字列のいずれかを :val としてキャプチャ
+    # 数値、シングルクォート文字列、ダブルクォート文字列のいずれかを :val としてキャプチャします。
     SELECT_PATTERN = /\ASELECT\s+(?:(?<val>\d+)|'(?<val>[^']*)'|"(?<val>[^"]*)")\z/i
 
     # @param io [PacketIO] パケットの送受信を行うオブジェクト
@@ -17,34 +18,26 @@ module RubyPureMysql
 
     # 受信したSQLクエリを解析し、適切なレスポンスを送信します。
     def process(sql)
-      # セミコロンの除去と正規化
       normalized_sql = sql.sub(/\s*;\s*\z/, '').strip
 
-      case normalized_sql
-      when SELECT_PATTERN
-        # 特殊変数 $~ (MatchData) から名前付きキャプチャを取得
-        handle_select($LAST_MATCH_INFO[:val])
+      if (match = normalized_sql.match(SELECT_PATTERN))
+        handle_select(match[:val])
       else
-        write_err_packet("Unsupported query: #{sql[0..32]}...", '42000', 1047)
+        write_err_packet("Unsupported or invalid query: #{sql[0..32]}...", '42000', 1064)
       end
     end
 
     private
 
-    # SELECT クエリの結果（単一値）を送信
+    # SELECT クエリの結果（単一値）を送信します。
     def handle_select(value)
-      # Text Resultset のフロー:
-      # 1. Column Count (列数)
-      # 2. Column Definition (列の定義)
-      # 3. EOF Packet
-      # 4. Row Data (実際のデータ)
-      # 5. EOF Packet (結果セットの終了)
+      display_name = (value.nil? || value.empty?) ? '?' : value
 
       write_column_count(1)
-      write_column_definition(value)
-      write_eof_packet(sequence_offset: 3) # カラム定義後のEOF
+      write_column_definition(display_name)
+      write_eof_packet(sequence_offset: 3)
       write_row_data(value)
-      write_eof_packet(sequence_offset: 5) # 全データ送信後のEOF
+      write_eof_packet(sequence_offset: 5)
     end
 
     def write_column_count(count)
@@ -52,8 +45,6 @@ module RubyPureMysql
     end
 
     def write_column_definition(name)
-      # 文字列を返す可能性を考慮し、型はデフォルトで VAR_STRING (0xFD) に寄せるか、
-      # あるいは既存の MYSQL_TYPE_LONG でも mysql2 側でよしなに処理されます。
       col_packet = Protocol::ColumnDefinitionPacket.new(
         name: name.to_s,
         column_type: Protocol::MYSQL_TYPE_LONG
@@ -62,12 +53,11 @@ module RubyPureMysql
     end
 
     def write_row_data(value)
-      # MySQLプロトコルの行データは、各カラム値を Length-Encoded String として連結したもの
       row_payload = PacketHelper.pack_lenc_string(value.to_s)
       @io.write_packet(row_payload, @seq + 4)
     end
 
-    # sequence_offset を引数に取ることで、どの段階のEOFかを明示的に制御
+    # sequence_offset を引数に取ることで、どの段階のEOFかを明示的に制御します
     def write_eof_packet(sequence_offset:)
       @io.write_packet(Protocol::EofPacket.new.payload, @seq + sequence_offset)
     end
