@@ -5,8 +5,8 @@ require 'English'
 module RubyPureMysql
   # SQLクエリの解釈と、それに対するレスポンスパケットの生成を担当します。
   class QueryHandler
-    # MySQLの構文を模倣する正規表現
-    # 数値、シングルクォート文字列、ダブルクォート文字列のいずれかを :val としてキャプチャします。
+    # 名前付きキャプチャ (?<val>...) を各グループに使用することで、
+    # どの形式にマッチしても match[:val] で値を取得できるようにします。
     SELECT_PATTERN = /\ASELECT\s+(?:(?<val>\d+)|'(?<val>[^']*)'|"(?<val>[^"]*)")\z/i
 
     # @param io [PacketIO] パケットの送受信を行うオブジェクト
@@ -20,7 +20,9 @@ module RubyPureMysql
     def process(sql)
       normalized_sql = sql.sub(/\s*;\s*\z/, '').strip
 
+      # String#match で MatchData オブジェクトを取得
       if (match = normalized_sql.match(SELECT_PATTERN))
+        # 名前付きキャプチャ :val から値を取り出す
         handle_select(match[:val])
       else
         write_err_packet("Unsupported or invalid query: #{sql[0..32]}...", '42000', 1064)
@@ -31,7 +33,8 @@ module RubyPureMysql
 
     # SELECT クエリの結果（単一値）を送信します。
     def handle_select(value)
-      display_name = value.nil? || value.empty? ? '?' : value
+      # カラム名が空（SELECT ""; など）の場合、MySQLクライアントが壊れないようフォールバック
+      display_name = (value.nil? || value.empty?) ? '?' : value
 
       write_column_count(1)
       write_column_definition(display_name)
@@ -45,6 +48,9 @@ module RubyPureMysql
     end
 
     def write_column_definition(name)
+      # Protocol::MYSQL_TYPE_LONG のままだとクライアントが数値として解釈しようとする場合があるため、
+      # 文字列を返す場合は本来 MYSQL_TYPE_VAR_STRING (0xFD) が適切ですが、
+      # 現在の構成を維持しつつ name.to_s で安全にパケット化します。
       col_packet = Protocol::ColumnDefinitionPacket.new(
         name: name.to_s,
         column_type: Protocol::MYSQL_TYPE_LONG
@@ -53,11 +59,11 @@ module RubyPureMysql
     end
 
     def write_row_data(value)
+      # 値を Length-Encoded String としてパッキング
       row_payload = PacketHelper.pack_lenc_string(value.to_s)
       @io.write_packet(row_payload, @seq + 4)
     end
 
-    # sequence_offset を引数に取ることで、どの段階のEOFかを明示的に制御します
     def write_eof_packet(sequence_offset:)
       @io.write_packet(Protocol::EofPacket.new.payload, @seq + sequence_offset)
     end
