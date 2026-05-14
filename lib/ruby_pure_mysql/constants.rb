@@ -9,6 +9,7 @@ module RubyPureMysql
 
     # カラム型 (Field Types)
     MYSQL_TYPE_LONG       = 0x03
+    MYSQL_TYPE_LONGLONG   = 0x08
     MYSQL_TYPE_VAR_STRING = 0xfd
 
     # キャラクターセット
