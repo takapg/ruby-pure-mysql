@@ -3,8 +3,13 @@
 module RubyPureMysql
   # SQLクエリの解釈と、それに対するレスポンスパケットの生成を担当します。
   class QueryHandler
-    # @param io [PacketIO] パケットの送受信を行うオブジェクト
-    # @param seq [Integer] クライアントから受け取った最後のシーケンス番号
+    # 抽出用正規表現。名前付きキャプチャを使用して可読性を維持。
+    SELECT_PATTERN = /\ASELECT\s+(?<expr>(?:(?<num>[+-]?\d+)|'(?<str>[^']*)'|"(?<str>[^"]*)"))\z/i
+
+    # 数値範囲の定義
+    INT32_RANGE = (-2_147_483_648..2_147_483_647)
+    INT64_RANGE = (-9_223_372_036_854_775_808..9_223_372_036_854_775_807)
+
     def initialize(io, seq)
       @io = io
       @seq = seq
@@ -12,45 +17,64 @@ module RubyPureMysql
 
     # 受信したSQLクエリを解析し、適切なレスポンスを送信します。
     def process(sql)
-      normalized_sql = sql.upcase.sub(/\s*;\s*\z/, '').strip
+      # 修正: gsub と strip で末尾の全セミコロンと空白を確実に除去
+      normalized = sql.gsub(/[;\s]+\z/, '').strip
 
-      if (match = normalized_sql.match(/\ASELECT\s+(\d+)\z/))
-        write_integer_result_set(match[1])
+      if (match = normalized.match(SELECT_PATTERN))
+        handle_matched_query(match)
       else
-        write_err_packet("Unsupported query: #{sql[0..32]}...", '42000', 1047)
+        write_err_packet("Unsupported or invalid query: #{sql[0..32]}...", '42000', 1064)
       end
     end
 
     private
 
-    # 整数値を1つ返すResultSetを生成・送信します。
-    def write_integer_result_set(value)
+    # process メソッドを分割して Metrics/MethodLength を回避
+    def handle_matched_query(match)
+      if match[:num]
+        val_i = match[:num].to_i
+        return unless valid_integer_range?(val_i, match[:num])
+
+        type = INT32_RANGE.cover?(val_i) ? Protocol::MYSQL_TYPE_LONG : Protocol::MYSQL_TYPE_LONGLONG
+        handle_select(val_i, type, match[:expr])
+      else
+        handle_select(match[:str], Protocol::MYSQL_TYPE_VAR_STRING, match[:expr])
+      end
+    end
+
+    def valid_integer_range?(val_i, raw_value)
+      return true if INT64_RANGE.cover?(val_i)
+
+      write_err_packet("Unsupported or invalid query: #{raw_value[0..32]}...", '42000', 1064)
+      false
+    end
+
+    # SELECT クエリの結果を送信
+    def handle_select(value, type, column_name)
       write_column_count(1)
-      write_column_definition(value)
-      write_eof_packet(2)
+      write_column_definition(column_name, type)
+      write_eof_packet(sequence_offset: 3)
       write_row_data(value)
-      write_eof_packet(4)
+      write_eof_packet(sequence_offset: 5)
     end
 
     def write_column_count(count)
       @io.write_packet([count].pack('C'), @seq + 1)
     end
 
-    def write_column_definition(name)
+    def write_column_definition(name, type)
       col_packet = Protocol::ColumnDefinitionPacket.new(
-        name: name,
-        column_type: Protocol::MYSQL_TYPE_LONG
+        name: name.to_s, column_type: type
       )
       @io.write_packet(col_packet.payload, @seq + 2)
     end
 
     def write_row_data(value)
-      row_payload = PacketHelper.pack_lenc_string(value)
-      @io.write_packet(row_payload, @seq + 4)
+      @io.write_packet(PacketHelper.pack_lenc_string(value.to_s), @seq + 4)
     end
 
-    def write_eof_packet(offset)
-      @io.write_packet(Protocol::EofPacket.new.payload, @seq + 1 + offset)
+    def write_eof_packet(sequence_offset:)
+      @io.write_packet(Protocol::EofPacket.new.payload, @seq + sequence_offset)
     end
 
     def write_err_packet(message, sql_state = '42000', error_code = 1047)

@@ -59,4 +59,39 @@ RSpec.shared_examples 'a MySQL-compatible server' do |port|
       nil
     end
   end
+
+  describe 'SELECT basic values' do
+    it 'returns an integer for SELECT 123;' do
+      results = client.query('SELECT 123;')
+      expect(results.first.values.first).to eq(123)
+    end
+
+    it "returns a string for SELECT 'hello';" do
+      results = client.query("SELECT 'hello';")
+      expect(results.first.values.first).to eq('hello')
+    end
+
+    it 'returns a string for double quoted SELECT "world";' do
+      results = client.query('SELECT "world";')
+      expect(results.first.values.first).to eq('world')
+    end
+
+    it 'returns an empty string for SELECT "";' do
+      results = client.query('SELECT "";')
+      expect(results.first.values.first).to eq('')
+    end
+  end
+
+  describe 'Query normalization and casing' do
+    it 'is case-insensitive for SELECT keyword' do
+      results = client.query("select 'case_test';")
+      expect(results.first.values.first).to eq('case_test')
+    end
+
+    it 'handles trailing spaces and multiple semicolons' do
+      # 最後のセミコロン除去ロジックのテスト
+      results = client.query("SELECT 'space_test'  ;;;  ")
+      expect(results.first.values.first).to eq('space_test')
+    end
+  end
 end
