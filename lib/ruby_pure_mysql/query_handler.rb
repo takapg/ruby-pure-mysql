@@ -4,10 +4,11 @@ module RubyPureMysql
   # SQLクエリの解釈と、それに対するレスポンスパケットの生成を担当します。
   class QueryHandler
     # 抽出用正規表現。名前付きキャプチャを使用して可読性を維持。
-    SELECT_PATTERN = /\ASELECT\s+(?<expr>(?:(?<num>\d+)|'(?<str>[^']*)'|"(?<str>[^"]*)"))\z/i
+    SELECT_PATTERN = /\ASELECT\s+(?<expr>(?:(?<num>[+-]?\d+)|'(?<str>[^']*)'|"(?<str>[^"]*)"))\z/i
 
     # 数値範囲の定義
     INT32_RANGE = (-2_147_483_648..2_147_483_647)
+    INT64_RANGE = (-9_223_372_036_854_775_808..9_223_372_036_854_775_807)
 
     def initialize(io, seq)
       @io = io
@@ -32,6 +33,8 @@ module RubyPureMysql
     def handle_matched_query(match)
       if match[:num]
         val_i = match[:num].to_i
+        return write_err_packet("Unsupported or invalid query: #{match[:num]}...", '42000', 1064) unless INT64_RANGE.cover?(val_i)
+
         type = INT32_RANGE.cover?(val_i) ? Protocol::MYSQL_TYPE_LONG : Protocol::MYSQL_TYPE_LONGLONG
         handle_select(match[:num], type, match[:expr])
       else
