@@ -39,7 +39,7 @@ module RubyPureMysql
         end
 
         type = INT32_RANGE.cover?(val_i) ? Protocol::MYSQL_TYPE_LONG : Protocol::MYSQL_TYPE_LONGLONG
-        handle_select(match[:num], type, match[:expr])
+        handle_select(val_i, type, match[:expr])
       else
         handle_select(match[:str], Protocol::MYSQL_TYPE_VAR_STRING, match[:expr])
       end
